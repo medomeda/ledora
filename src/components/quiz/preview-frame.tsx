@@ -15,7 +15,7 @@ const SCREENS: Array<{ id: PreviewScreen | "flow"; label: string }> = [
 ];
 
 /** Taille « virtuelle » de l'appareil simulé : le quiz y est rendu tel qu'il le serait, puis réduit pour tenir dans le panneau. */
-const VIEWPORT = { desktop: { w: 780, h: 620 }, mobile: { w: 390, h: 740 } } as const;
+const VIEWPORT = { desktop: { w: 900, h: 620 }, mobile: { w: 390, h: 740 } } as const;
 const MIN_SCALE = 0.55;
 
 function useSize<T extends HTMLElement>() {
