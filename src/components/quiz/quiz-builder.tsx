@@ -150,20 +150,21 @@ export function QuizBuilder({ initialConfig, initialMeta, brand, bookingUrl }: {
 
   return (
     <div>
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
+      <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
+        <div className="min-w-0 md:flex-1">
           <Link href="/lead-magnets" className="mb-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" /> Lead Magnets</Link>
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="font-display text-2xl font-semibold sm:text-3xl">{config.title || "Quiz sans titre"}</h1>
+          <h1 className="font-display text-2xl font-semibold leading-tight sm:text-3xl">{config.title || "Quiz sans titre"}</h1>
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
             <Badge tone={published ? "success" : "warning"}>{QUIZ_STATUS_LABELS[meta.status]}</Badge>
             {published && meta.hasUnpublishedChanges && <Badge tone="info">Modifications non publiées</Badge>}
+            <span className="text-sm" aria-live="polite">{status}</span>
           </div>
-          <p className="mt-1 text-sm" aria-live="polite">{status}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {meta.participants > 0 && <Button asChild variant="ghost"><Link href={`/lead-magnets/${meta.id}/stats`}><BarChart3 /> Statistiques</Link></Button>}
-          <Button variant="outline" onClick={() => setPreviewOpen(true)}><Eye /> Aperçu</Button>
-          <Button onClick={() => setStep("publish")}><Rocket /> {published ? "Publication" : "Publier"}</Button>
+        {/* Actions : toujours en haut à droite, sur une seule ligne, quelle que soit la longueur du titre. */}
+        <div className="flex shrink-0 items-center gap-2 md:pt-7">
+          {meta.participants > 0 && <Button asChild variant="ghost" className="whitespace-nowrap"><Link href={`/lead-magnets/${meta.id}/stats`}><BarChart3 /> Statistiques</Link></Button>}
+          <Button variant="outline" className="whitespace-nowrap" onClick={() => setPreviewOpen(true)}><Eye /> Aperçu</Button>
+          <Button className="whitespace-nowrap" onClick={() => setStep("publish")}><Rocket /> {published ? "Publication" : "Publier"}</Button>
         </div>
       </div>
 
