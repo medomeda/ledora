@@ -206,7 +206,7 @@ export function QuizBuilder({ initialConfig, initialMeta, brand, bookingUrl, pla
         /* Onglet Design : réglages à gauche, aperçu en direct à droite (il suit chaque modification). */
         <div className="grid gap-8 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]">
           <DesignStep {...props} />
-          <div className="lg:sticky lg:top-32 lg:h-[calc(100dvh-9rem)] lg:self-start">
+          <div className="h-[78dvh] min-h-[480px] lg:sticky lg:top-32 lg:h-[calc(100dvh-9rem)] lg:self-start">
             <PreviewFrame config={config} brand={brand} plan={plan} screens fill defaultScreen="intro" className="h-full" />
           </div>
         </div>
@@ -234,7 +234,7 @@ export function QuizBuilder({ initialConfig, initialMeta, brand, bookingUrl, pla
           <DialogPrimitive.Content className="fixed inset-2 z-50 flex flex-col rounded-xl border bg-card p-4 shadow-xl sm:inset-6">
             <div className="mb-3 flex items-center justify-between"><DialogPrimitive.Title className="font-display text-lg font-semibold">Aperçu du quiz</DialogPrimitive.Title><DialogPrimitive.Close className="rounded-md p-1.5 text-muted-foreground hover:bg-muted" aria-label="Fermer l'aperçu"><X className="size-5" /></DialogPrimitive.Close></div>
             <DialogPrimitive.Description className="sr-only">Aperçu fidèle de l&apos;expérience participant avec vos modifications actuelles.</DialogPrimitive.Description>
-            <PreviewFrame config={config} brand={brand} plan={plan} screens className="min-h-0 flex-1" />
+            <PreviewFrame config={config} brand={brand} plan={plan} screens fill className="min-h-0 flex-1" />
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>
       </DialogPrimitive.Root>

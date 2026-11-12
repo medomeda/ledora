@@ -40,9 +40,17 @@ export function PreviewFrame({ config, brand, plan = "free", className, screens 
           {SCREENS.map((s) => <button key={s.id} onClick={() => setScreen(s.id)} aria-pressed={screen === s.id} className={cn("rounded-full border px-3 py-1 text-xs transition-colors", screen === s.id ? "border-primary bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground")}>{s.label}</button>)}
         </div>
       )}
-      <div className={cn("min-h-0 overflow-auto rounded-xl border bg-muted p-3 sm:p-5", fill && "flex-1")}>
-        <div className={cn("mx-auto overflow-hidden bg-background shadow-lg transition-[width] duration-300", device === "mobile" ? "w-[390px] max-w-full rounded-[2rem] border-[10px] border-primary" : "w-full rounded-xl border", !fill && device === "desktop" && "max-w-4xl")} style={{ minHeight: device === "mobile" ? 640 : 480 }}>
-          <div className={cn("overflow-y-auto", device === "mobile" ? "h-[620px]" : fill ? "h-[min(70dvh,640px)] min-h-[460px]" : "max-h-[70dvh] min-h-[500px]")}>
+      {/* Un seul défilement : celui de l'écran simulé. Le cadre gris ne défile jamais ; en mode `fill`, l'appareil occupe toute la hauteur disponible. */}
+      <div className={cn("min-h-0 rounded-xl border bg-muted p-3 sm:p-4", fill && "flex flex-1 justify-center")}>
+        <div
+          className={cn(
+            "overflow-hidden bg-background shadow-lg transition-[width] duration-300",
+            device === "mobile" ? "w-[390px] max-w-full rounded-[2rem] border-[10px] border-primary" : "w-full rounded-xl border",
+            fill ? "h-full" : "mx-auto",
+            !fill && device === "desktop" && "max-w-4xl",
+          )}
+        >
+          <div className={cn("overflow-y-auto overscroll-contain", fill ? "h-full" : device === "mobile" ? "h-[620px]" : "h-[min(70dvh,640px)] min-h-[420px]")}>
             <QuizRunner key={key} config={config} brand={brand} mode="preview" plan={plan} previewScreen={screen === "flow" ? undefined : screen} />
           </div>
         </div>
