@@ -49,6 +49,15 @@ devient `db.transaction()` et chaque tableau devient une table ; services et éc
 | Plans et quotas (§15) | `lib/constants/plans.ts` (quiz actifs, participations/mois, générations IA/mois), appliqués par les services. | Modifiable sans toucher au code métier. |
 | Images | Logo et couverture redimensionnés côté navigateur, stockés en data URL. | Pas de stockage de fichiers en phase simulée. |
 
+## Créateur de quiz : ordre des étapes
+
+Informations → **Profils** (mode de calcul, nom, description, couleur, priorité) → **Questions** (réponses reliées aux
+profils par pastilles colorées, pondération facultative, points au score global seulement quand il sert : mode « plages »
+ou score affiché) → **Résultats** (diagnostic, recommandations, bouton d'action, tags ; éditeur visuel des plages en
+mode « plages ») → Capture → Publication. Les profils précèdent les questions car celles-ci y font référence ;
+leur contenu vient après car il dépend de ce que les questions mesurent. Contrôles d'équilibre :
+`profilePotential` (points possibles par profil), `rangeCoverage` (trous et chevauchements), `validateForPublish`.
+
 ## Sécurité en place
 
 Validation Zod côté serveur sur toutes les entrées · mots de passe scrypt · sessions httpOnly/SameSite · limitation de

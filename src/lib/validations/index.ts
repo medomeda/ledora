@@ -90,6 +90,7 @@ export const quizProfileSchema = z.object({
   recommendations: list,
   ctaLabel: text(80),
   ctaUrl: optionalUrl,
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   priority: z.number().int().min(0).max(100),
   autoTags: z.array(text(40)).max(5),
   scoreRange: z.object({ min: z.number().int().min(0).max(10000), max: z.number().int().min(0).max(10000) }).nullable(),

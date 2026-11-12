@@ -27,13 +27,14 @@ Les phases fonctionnelles du PRD §16 sont couvertes, **hors Publications et Ass
 | §6.9 Mon Business | ✅ Deux onglets : Informations (`/business`) et Offres et services (`/business/offers`) | ⬜ Stockage du logo |
 | §6.10 Assistant IA | ⏸ Au chaud (codé, testé, désactivé) | ⬜ Modèle de langage réel si réactivé |
 | §6.11 Publications | ⏸ Au chaud (codé, désactivé) | — |
-| §13 Tests | ✅ 50 tests (dont modules au chaud, séparation business/offres, prospects multi-quiz) (scoring, cycle de vie, versions, participation, CRM, isolation, stats, auth, seed) | ⬜ Tests d'intégration base, E2E Playwright |
+| §13 Tests | ✅ 52 tests (dont modules au chaud, séparation business/offres, prospects multi-quiz) (scoring, cycle de vie, versions, participation, CRM, isolation, stats, auth, seed) | ⬜ Tests d'intégration base, E2E Playwright |
 | §15 Plans et quotas | ✅ Structure et application des limites | ⬜ Paiement (hors MVP) |
 
 ## 3. Journal des livraisons
 
 | Date | Livraison |
 |---|---|
+| 12/11/2026 | **Créateur de quiz : étapes réordonnées et scoring repensé.** Ordre : Informations, Profils, Questions, Résultats, Capture, Publication. Profils colorés ; chaque réponse se relie aux profils par pastilles (pondération facultative par question) ; « Points au score global » affiché seulement quand il sert ; barre « points possibles par profil » (alerte profil inatteignable) ; plages de score visuelles avec détection des trous et chevauchements. Aucun changement du modèle de données stocké (champ `color` facultatif ajouté aux profils). 52 tests. |
 | 12/11/2026 | **Prospects multi-participations** : la fiche liste toutes les participations (plus récente d'abord, objectif du quiz affiché) ; le CRM gagne une colonne « Participations » (pastille si > 1) et le filtre « Plusieurs participations seulement » (pris en compte par l'export CSV) ; le jeu de démo contient une dizaine de prospects ayant fait les deux quiz. 50 tests. |
 | 12/11/2026 | **Mon Business en deux onglets** (`/business`, `/business/offers`), chacun avec sa propre adresse (composant `TabNav`, réutilisable pour les Paramètres). Avant : deux cartes sur une page. |
 | 12/11/2026 | **Mon Business : informations de l'activité et offres/services séparées** en deux cartes avec leurs propres formulaires, schémas de validation, actions et enregistrements (modifier l'un ne touche pas l'autre). |

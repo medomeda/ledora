@@ -85,6 +85,8 @@ export interface QuizProfile {
   recommendations: string[];
   ctaLabel: string;
   ctaUrl: string;
+  /** Couleur d'identification (pastilles du créateur) ; absente = couleur attribuée selon la position. */
+  color?: string;
   /** Plus la valeur est élevée, plus le profil l'emporte en cas d'égalité. */
   priority: number;
   /** Tags ajoutés automatiquement au prospect (PRD §6.7 D). */

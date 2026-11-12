@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { blankProfile } from "@/lib/quiz/factory";
-import { computeResult, pickProfile, quizMaxScore, ScoringError, validateForPublish } from "@/services/scoring.service";
+import { computeResult, pickProfile, profilePotential, quizMaxScore, rangeCoverage, ScoringError, validateForPublish } from "@/services/scoring.service";
 import { answersFor, sampleConfig } from "@/tests/helpers";
 
 describe("scoring", () => {
@@ -82,5 +82,33 @@ describe("scoring", () => {
     const messages = validateForPublish(bad).map((i) => i.message);
     expect(messages).toContain("Le titre du quiz est obligatoire.");
     expect(messages).toContain("Ajoutez au moins une question.");
+  });
+
+  it("calcule les points possibles par profil et signale un profil inatteignable", () => {
+    const pot = profilePotential(config);
+    // 5 questions à réponse unique : chaque profil a une réponse à 1 point par question.
+    expect(Object.values(pot)).toEqual([5, 5, 5]);
+    const c = structuredClone(config);
+    c.questions.forEach((q) => q.options.forEach((o) => (o.profilePoints = o.profilePoints.filter((pp) => pp.profileId !== c.profiles[2]!.id))));
+    expect(profilePotential(c)[c.profiles[2]!.id]).toBe(0);
+    expect(validateForPublish(c).find((i) => i.message.includes("jamais être obtenu"))?.step).toBe("questions");
+    // Choix multiple : somme des contributions positives.
+    const m = structuredClone(config);
+    m.questions[0]!.type = "multiple";
+    m.questions[0]!.options.forEach((o) => (o.profilePoints = [{ profileId: m.profiles[0]!.id, points: 2 }]));
+    expect(profilePotential(m)[m.profiles[0]!.id]).toBe(2 * 3 + 4);
+  });
+
+  it("détecte trous et chevauchements des plages", () => {
+    const c = structuredClone(config);
+    c.scoringMode = "ranges";
+    c.profiles[0]!.scoreRange = { min: 11, max: 15 };
+    c.profiles[1]!.scoreRange = { min: 6, max: 9 };
+    c.profiles[2]!.scoreRange = { min: 0, max: 7 };
+    const cov = rangeCoverage(c);
+    expect(cov.max).toBe(15);
+    expect(cov.gaps).toEqual([[10, 10]]);
+    expect(cov.overlaps).toEqual([[6, 7]]);
+    expect(validateForPublish(c).find((i) => i.message.includes("score 10"))?.step).toBe("result");
   });
 });

@@ -31,7 +31,7 @@ export function PublishStep({ config, quiz, issues, goTo, slug, onSlugChange, sl
   const url = `${origin}/q/${slug}`;
   const published = quiz.status === "published";
   const neverPublished = !quiz.publishedAt;
-  const stepLabel: Record<PublishIssue["step"], string> = { general: "Informations", questions: "Questions", profiles: "Profils", capture: "Capture", result: "Profils" };
+  const stepLabel: Record<PublishIssue["step"], string> = { general: "Informations", questions: "Questions", profiles: "Profils", capture: "Capture", result: "Résultats" };
   const channelUrl = (id: string) => `${url}?utm_source=${id}&utm_medium=${id === "email" ? "email" : "social"}`;
   const share = encodeURIComponent(`${config.title} — ${channelUrl("whatsapp")}`);
 
@@ -49,7 +49,7 @@ export function PublishStep({ config, quiz, issues, goTo, slug, onSlugChange, sl
             {issues.map((i, k) => (
               <li key={k} className="flex items-start justify-between gap-3 rounded-lg bg-accent-soft px-3 py-2 text-sm text-accent-soft-foreground">
                 <span>{i.message}</span>
-                <button onClick={() => goTo(i.step === "result" ? "profiles" : i.step)} className="shrink-0 font-medium underline underline-offset-2">Corriger ({stepLabel[i.step]})</button>
+                <button onClick={() => goTo(i.step === "result" ? "results" : i.step)} className="shrink-0 font-medium underline underline-offset-2">Corriger ({stepLabel[i.step]})</button>
               </li>
             ))}
           </ul>

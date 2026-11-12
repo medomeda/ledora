@@ -89,8 +89,42 @@ export function computeResult(config: QuizConfig, input: AnswerInput): ScoringRe
   return { answers, totalScore, maxScore: quizMaxScore(config), profileId: profile?.id ?? null, profileScores };
 }
 
+/**
+ * Points maximum que chaque profil peut recevoir sur l'ensemble du quiz (réponse unique : la meilleure ;
+ * choix multiple : somme des contributions positives). Sert au contrôle d'équilibre du créateur.
+ */
+export function profilePotential(config: QuizConfig): Record<string, number> {
+  const out: Record<string, number> = Object.fromEntries(config.profiles.map((p) => [p.id, 0]));
+  for (const q of config.questions) {
+    for (const p of config.profiles) {
+      const pts = q.options.map((o) => o.profilePoints.find((x) => x.profileId === p.id)?.points ?? 0);
+      out[p.id]! += q.type === "multiple" ? pts.filter((v) => v > 0).reduce((a, b) => a + b, 0) : Math.max(0, ...pts);
+    }
+  }
+  return out;
+}
+
+/** Trous et chevauchements des plages de score (mode « plages »), pour l'éditeur visuel. */
+export function rangeCoverage(config: QuizConfig): { max: number; gaps: Array<[number, number]>; overlaps: Array<[number, number]> } {
+  const max = quizMaxScore(config);
+  const ranges = config.profiles.flatMap((p) => (p.scoreRange && p.scoreRange.min <= p.scoreRange.max ? [p.scoreRange] : []));
+  const gaps: Array<[number, number]> = [];
+  const overlaps: Array<[number, number]> = [];
+  const push = (list: Array<[number, number]>, s: number) => {
+    const last = list[list.length - 1];
+    if (last && last[1] === s - 1) last[1] = s;
+    else list.push([s, s]);
+  };
+  for (let s = 0; s <= max; s++) {
+    const n = ranges.filter((r) => s >= r.min && s <= r.max).length;
+    if (n === 0) push(gaps, s);
+    if (n > 1) push(overlaps, s);
+  }
+  return { max, gaps, overlaps };
+}
+
 export interface PublishIssue {
-  /** Étape du créateur concernée, pour y renvoyer l'utilisateur. */
+  /** Étape du créateur concernée : « result » désigne l'étape Résultats. */
   step: "general" | "questions" | "profiles" | "capture" | "result";
   message: string;
 }
@@ -116,21 +150,21 @@ export function validateForPublish(config: QuizConfig): PublishIssue[] {
   } else {
     config.profiles.forEach((p) => {
       if (!p.name.trim()) add("profiles", "Un profil n'a pas de nom.");
-      if (!p.resultContent.trim()) add("profiles", `Le profil « ${p.name || "sans nom"} » n'a pas de texte de diagnostic.`);
-      if (p.ctaUrl.trim() && !/^https?:\/\//i.test(p.ctaUrl.trim())) add("profiles", `Le lien du bouton d'action du profil « ${p.name || "sans nom"} » doit commencer par http:// ou https://.`);
+      if (!p.resultContent.trim()) add("result", `Le profil « ${p.name || "sans nom"} » n'a pas de texte de diagnostic.`);
+      if (p.ctaUrl.trim() && !/^https?:\/\//i.test(p.ctaUrl.trim())) add("result", `Le lien du bouton d'action du profil « ${p.name || "sans nom"} » doit commencer par http:// ou https://.`);
     });
     if (config.scoringMode === "profiles") {
       const contributing = new Set(config.questions.flatMap((q) => q.options.flatMap((o) => o.profilePoints.filter((pp) => pp.points > 0).map((pp) => pp.profileId))));
-      for (const p of config.profiles) if (!contributing.has(p.id)) add("profiles", `Aucune réponse ne rapporte de points au profil « ${p.name || "sans nom"} » : il ne pourra jamais être obtenu.`);
+      for (const p of config.profiles) if (!contributing.has(p.id)) add("questions", `Aucune réponse ne rapporte de points au profil « ${p.name || "sans nom"} » : il ne pourra jamais être obtenu.`);
     } else {
       const max = quizMaxScore(config);
       const ranged = config.profiles.filter((p) => p.scoreRange);
-      if (ranged.length !== config.profiles.length) add("profiles", "Chaque profil doit avoir une plage de score.");
-      for (const p of ranged) if (p.scoreRange!.min > p.scoreRange!.max) add("profiles", `La plage du profil « ${p.name} » est invalide (minimum supérieur au maximum).`);
+      if (ranged.length !== config.profiles.length) add("result", "Chaque profil doit avoir une plage de score.");
+      for (const p of ranged) if (p.scoreRange!.min > p.scoreRange!.max) add("result", `La plage du profil « ${p.name} » est invalide (minimum supérieur au maximum).`);
       // Couverture : chaque score entier possible entre 0 et le maximum doit mener à un profil.
       for (let s = 0; s <= max; s++) {
         if (!ranged.some((p) => s >= p.scoreRange!.min && s <= p.scoreRange!.max)) {
-          add("profiles", `Le score ${s} n'est couvert par aucune plage (les scores vont de 0 à ${max}).`);
+          add("result", `Le score ${s} n'est couvert par aucune plage (les scores vont de 0 à ${max}).`);
           break;
         }
       }

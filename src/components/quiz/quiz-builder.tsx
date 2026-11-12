@@ -10,6 +10,7 @@ import { PreviewFrame } from "@/components/quiz/preview-frame";
 import { CaptureStep } from "@/components/quiz/steps/capture-step";
 import { GeneralStep } from "@/components/quiz/steps/general-step";
 import { ProfilesStep } from "@/components/quiz/steps/profiles-step";
+import { ResultsStep } from "@/components/quiz/steps/results-step";
 import { PublishStep } from "@/components/quiz/steps/publish-step";
 import { QuestionsStep } from "@/components/quiz/steps/questions-step";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +20,7 @@ import { cn } from "@/lib/utils/cn";
 import { validateForPublish } from "@/services/scoring.service";
 import type { QuizConfig, QuizStatus } from "@/types/domain";
 
-export type StepId = "general" | "questions" | "profiles" | "capture" | "publish";
+export type StepId = "general" | "profiles" | "questions" | "results" | "capture" | "publish";
 
 export interface QuizMeta {
   id: string;
@@ -40,8 +41,9 @@ export interface StepProps {
 
 const STEPS: Array<{ id: StepId; label: string; issueStep?: string[] }> = [
   { id: "general", label: "Informations", issueStep: ["general"] },
+  { id: "profiles", label: "Profils", issueStep: ["profiles"] },
   { id: "questions", label: "Questions", issueStep: ["questions"] },
-  { id: "profiles", label: "Profils et résultats", issueStep: ["profiles", "result"] },
+  { id: "results", label: "Résultats", issueStep: ["result"] },
   { id: "capture", label: "Capture", issueStep: ["capture"] },
   { id: "publish", label: "Publication" },
 ];
@@ -184,8 +186,9 @@ export function QuizBuilder({ initialConfig, initialMeta, brand, bookingUrl }: {
 
       <div className="max-w-3xl">
         {step === "general" && <GeneralStep {...props} />}
-        {step === "questions" && <QuestionsStep {...props} />}
         {step === "profiles" && <ProfilesStep {...props} />}
+        {step === "questions" && <QuestionsStep {...props} />}
+        {step === "results" && <ResultsStep {...props} />}
         {step === "capture" && <CaptureStep {...props} />}
         {step === "publish" && <PublishStep {...props} issues={issues} slug={slug} onSlugChange={(v) => { setSlug(v); setSlugError(null); }} slugError={slugError} onPublish={publish} onUnpublish={unpublish} busy={publishing || saveState === "saving"} dirty={saveState !== "saved"} />}
       </div>
