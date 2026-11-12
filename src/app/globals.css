@@ -76,6 +76,8 @@
     @apply border-border;
   }
   html {
+    /* Réserve toujours la place de la barre de défilement : sans cela, le contenu centré se décale de quelques pixels quand on passe d'une page courte à une page longue (ex. onglets de Mon Business). */
+    scrollbar-gutter: stable;
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
