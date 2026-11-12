@@ -1,0 +1,124 @@
+@import "tailwindcss";
+
+/*
+ * Design system Leadora — palette volontairement courte :
+ * encre (texte, actions principales), souci (accent de marque, rare), menthe (succès), corail (alertes), gris froids.
+ * Contrastes des textes ≥ 4.5:1.
+ */
+:root {
+  --background: #f4f5f7;
+  --foreground: #121521;
+  --card: #ffffff;
+  --muted: #eceef2;
+  --muted-foreground: #5b6275;
+  --border: #e1e4ea;
+  --input: #cdd2dc;
+
+  --primary: #151a2d;
+  --primary-hover: #262d47;
+  --primary-foreground: #ffffff;
+
+  --accent: #f5a524;
+  --accent-soft: #fff3d6;
+  --accent-soft-foreground: #7a4b00;
+
+  --success: #0f8a6a;
+  --success-soft: #dff5ee;
+  --success-soft-foreground: #09614a;
+
+  --destructive: #d6372f;
+  --destructive-hover: #b42b24;
+  --destructive-soft: #fdeceb;
+  --destructive-soft-foreground: #a5251f;
+
+  --info-soft: #e6edff;
+  --info-soft-foreground: #2a3f9e;
+
+  --ring: #3b5bdb;
+}
+
+@theme inline {
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-display), var(--font-body), ui-sans-serif, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-soft-foreground: var(--accent-soft-foreground);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-soft-foreground: var(--success-soft-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-hover: var(--destructive-hover);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-destructive-soft-foreground: var(--destructive-soft-foreground);
+  --color-info-soft: var(--info-soft);
+  --color-info-soft-foreground: var(--info-soft-foreground);
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+  ::selection {
+    background: var(--accent-soft);
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@utility font-display {
+  font-family: var(--font-display), var(--font-body), ui-sans-serif, sans-serif;
+  font-optical-sizing: auto;
+  letter-spacing: -0.02em;
+}
+@utility pb-safe {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-pop-in {
+  animation: pop-in 0.28s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

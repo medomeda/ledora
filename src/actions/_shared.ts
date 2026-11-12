@@ -1,0 +1,82 @@
+import "server-only";
+import type { z } from "zod";
+import { getSession, type SessionUser } from "@/lib/auth/session";
+import { ctxFor, type Ctx } from "@/server/context";
+import { AppError } from "@/server/errors";
+
+export type ActionResult<T = void> = { ok: true; data: T; message?: string } | { ok: false; error: string; fieldErrors?: Record<string, string> };
+
+export function fieldErrorsOf(error: z.ZodError): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const issue of error.issues) out[issue.path.join(".") || "_"] ??= issue.message;
+  return out;
+}
+
+/** Erreur métier → message utilisateur ; toute autre erreur → message générique avec code de référence (détail dans les journaux). */
+export function toFailure(err: unknown): ActionResult<never> {
+  if (err instanceof AppError) {
+    if (err.code === "UNAUTHENTICATED") return { ok: false, error: "Votre session a expiré. Reconnectez-vous." };
+    return { ok: false, error: err.message, fieldErrors: err.fieldErrors };
+  }
+  const ref = `E-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  console.error(`[${ref}] erreur inattendue`, err);
+  return { ok: false, error: `Une erreur inattendue est survenue. Réessayez ; si cela se reproduit, communiquez le code ${ref} au support.` };
+}
+
+/**
+ * Enveloppe commune des Server Actions privées : 1. session obligatoire ; 2. validation Zod de l'entrée
+ * (aucune confiance dans le client) ; 3. le service applique les permissions dans une transaction ; 4. résultat typé.
+ */
+export async function authed<S extends z.ZodType, T>(schema: S, raw: unknown, run: (input: z.output<S>, ctx: Ctx, user: SessionUser) => T | Promise<T>): Promise<ActionResult<Awaited<T>>> {
+  const user = await getSession();
+  if (!user) return { ok: false, error: "Votre session a expiré. Reconnectez-vous." };
+  const parsed = schema.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "Certains champs sont invalides.", fieldErrors: fieldErrorsOf(parsed.error) };
+  try {
+    return { ok: true, data: await run(parsed.data, ctxFor(user.id), user) };
+  } catch (err) {
+    return toFailure(err);
+  }
+}
+
+/** Limiteur en mémoire (anti force brute / abus). Remplacé par un stockage partagé en production multi-instances. */
+const attempts = new Map<string, { count: number; resetAt: number }>();
+
+function hit(key: string, windowMs: number) {
+  const now = Date.now();
+  const entry = attempts.get(key);
+  if (!entry || entry.resetAt < now) {
+    const fresh = { count: 1, resetAt: now + windowMs };
+    attempts.set(key, fresh);
+    return fresh;
+  }
+  entry.count++;
+  return entry;
+}
+
+export function rateLimit(key: string, max: number, windowMs: number): boolean {
+  return hit(key, windowMs).count <= max;
+}
+
+export function failureLimiter(key: string, max: number, windowMs: number) {
+  return {
+    blocked: () => {
+      const e = attempts.get(key);
+      return !!e && e.resetAt > Date.now() && e.count >= max;
+    },
+    fail: () => void hit(key, windowMs),
+    reset: () => void attempts.delete(key),
+  };
+}
+
+/** N'autorise que des redirections internes. */
+export function safeNext(next: unknown, fallback = "/dashboard"): string {
+  if (typeof next !== "string" || !next.startsWith("/") || next.length > 512) return fallback;
+  if (/[\u0000-\u001f\u007f\\]/.test(next)) return fallback;
+  try {
+    const url = new URL(next, "http://leadora.local");
+    return url.origin === "http://leadora.local" ? url.pathname + url.search + url.hash : fallback;
+  } catch {
+    return fallback;
+  }
+}
