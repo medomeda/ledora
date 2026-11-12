@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { logoutAction } from "@/actions/auth";
 import { Brand } from "@/components/layout/brand";
+import { useOptimisticPath } from "@/components/layout/use-optimistic-path";
 import { NavPending } from "@/components/layout/nav-pending";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,13 +25,13 @@ const NAV: Array<{ href: string; label: string; icon: typeof Gauge; exact?: bool
 ];
 
 function Links({ onNavigate, permissions }: { onNavigate?: () => void; permissions: Permission[] }) {
-  const pathname = usePathname();
+  const { current: pathname, select } = useOptimisticPath();
   return (
     <nav aria-label="Navigation de l'administration" className="space-y-0.5">
       {NAV.filter((n) => !n.permission || permissions.includes(n.permission)).map(({ href, label, icon: Icon, exact }) => {
         const active = exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
         return (
-          <Link key={href} href={href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors", active ? "bg-white/12 text-white" : "text-white/65 hover:bg-white/8 hover:text-white")}>
+          <Link key={href} href={href} onClick={() => { select(href); onNavigate?.(); }} aria-current={active ? "page" : undefined} className={cn("flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium", active ? "bg-white/12 text-white" : "text-white/65 hover:bg-white/8 hover:text-white")}>
             <Icon className="size-[18px]" />{label}<NavPending className="ml-auto" />
           </Link>
         );
