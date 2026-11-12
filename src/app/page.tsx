@@ -6,7 +6,9 @@ import { Brand } from "@/components/layout/brand";
 import { HeroQuiz } from "@/components/marketing/hero-quiz";
 import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/auth/session";
-import { PLANS } from "@/lib/constants/plans";
+import "@/server/bootstrap";
+import { allPlans } from "@/lib/constants/plans";
+import { read } from "@/server/db/store";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 
 const TITLE = "Leadora : créez un quiz marketing qui qualifie vos prospects";
@@ -38,7 +40,6 @@ const USE_CASES = [
   { icon: Rocket, who: "Entrepreneurs", quiz: "« Quel type d'entrepreneur êtes-vous ? »", text: "Faites connaître votre offre avec un contenu que l'on a envie de partager." },
 ];
 
-const PLAN_PRICES: Record<string, string> = { free: "0 €", starter: "Bientôt", pro: "Bientôt" };
 const PLAN_NOTES: Record<string, string> = { free: "Pour lancer votre premier quiz", starter: "Pour animer plusieurs campagnes", pro: "Pour une activité à fort volume" };
 const num = (n: number | null, unit: string) => (n === null ? `${unit} illimités` : `${n.toLocaleString("fr-FR")} ${unit}`);
 
@@ -53,7 +54,9 @@ const jsonLd = {
 };
 
 export default async function Home() {
-  if (await getSession()) redirect("/dashboard");
+  const session = await getSession();
+  if (session) redirect(session.role === "admin" ? "/admin" : "/dashboard");
+  const plans = read((s) => allPlans(s));
   return (
     <div className="min-h-dvh bg-background">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
@@ -198,11 +201,11 @@ export default async function Home() {
         <section id="tarifs" className="mx-auto max-w-6xl scroll-mt-20 px-5 py-24">
           <h2 className="max-w-2xl font-display text-3xl font-semibold sm:text-4xl">Démarrez gratuitement, grandissez quand vos quiz fonctionnent.</h2>
           <div className="mt-12 grid gap-5 md:grid-cols-3">
-            {Object.values(PLANS).map((p) => (
+            {plans.map((p) => (
               <article key={p.id} className={`flex flex-col rounded-2xl border p-6 ${p.id === "free" ? "border-primary bg-card ring-1 ring-primary" : "bg-card"}`}>
                 <h3 className="font-display text-xl font-semibold">{p.name}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">{PLAN_NOTES[p.id]}</p>
-                <p className="mt-5 font-display text-4xl font-semibold">{PLAN_PRICES[p.id]}{p.id === "free" && <span className="text-base font-normal text-muted-foreground"> / mois</span>}</p>
+                <p className="mt-5 font-display text-4xl font-semibold">{p.priceLabel}{p.id === "free" && <span className="text-base font-normal text-muted-foreground"> / mois</span>}</p>
                 <ul className="mt-6 space-y-2.5 text-sm">
                   {[num(p.maxActiveQuizzes, "quiz actifs"), num(p.maxMonthlySubmissions, "participations par mois"), `${p.maxMonthlyAiGenerations ?? "∞"} générations IA par mois`, "CRM, statistiques et export CSV"].map((f) => <li key={f} className="flex gap-2"><Check className="mt-0.5 size-4 shrink-0 text-success" aria-hidden />{f}</li>)}
                   <li className="flex gap-2"><Check className="mt-0.5 size-4 shrink-0 text-success" aria-hidden />{p.id === "free" ? "Mention « Propulsé par Leadora »" : "Mention « Propulsé par Leadora » retirable"}</li>

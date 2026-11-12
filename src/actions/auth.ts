@@ -13,6 +13,7 @@ import { z } from "zod";
 export async function registerAction(raw: unknown): Promise<ActionResult> {
   const parsed = registerSchema.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "Certains champs sont invalides.", fieldErrors: fieldErrorsOf(parsed.error) };
+  if (!read((s) => s.settings.registrationsOpen)) return { ok: false, error: "Les inscriptions sont momentanément fermées." };
   let userId: string;
   try {
     userId = tx((s) => auth.register(s, parsed.data).user.id);
@@ -35,7 +36,7 @@ export async function loginAction(raw: unknown): Promise<ActionResult> {
   }
   limiter.reset();
   await createSession(user.id);
-  redirect(safeNext(parsed.data.next));
+  redirect(safeNext(parsed.data.next, user.role === "admin" ? "/admin" : "/dashboard"));
 }
 
 export async function logoutAction(): Promise<void> {

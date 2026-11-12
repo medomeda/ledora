@@ -1,5 +1,5 @@
 import { canManageQuiz } from "@/lib/permissions";
-import { PLANS } from "@/lib/constants/plans";
+import { planDef } from "@/lib/constants/plans";
 import { blankConfig, newUid } from "@/lib/quiz/factory";
 import { slugify, stripHtml } from "@/lib/utils/text";
 import { isoNow, requireBusiness, type Ctx } from "@/server/context";
@@ -28,10 +28,10 @@ export function requireQuiz(s: Readonly<DbState>, business: Business, quizId: st
 }
 
 function assertQuota(s: Readonly<DbState>, business: Business) {
-  const max = PLANS[business.plan].maxActiveQuizzes;
+  const max = planDef(s, business.plan).maxActiveQuizzes;
   if (max === null) return;
   const active = s.quizzes.filter((q) => q.businessId === business.id && q.status !== "archived").length;
-  if (active >= max) throw quotaExceeded(`Votre offre « ${PLANS[business.plan].name} » est limitée à ${max} quiz actifs. Archivez un quiz pour en créer un nouveau.`);
+  if (active >= max) throw quotaExceeded(`Votre offre « ${planDef(s, business.plan).name} » est limitée à ${max} quiz actifs. Archivez un quiz pour en créer un nouveau.`);
 }
 
 // ---- Lecture ----------------------------------------------------------------------------------------------------
@@ -295,6 +295,6 @@ export function getPublicQuiz(s: Readonly<DbState>, slug: string): PublicQuiz | 
   if (!quiz || quiz.status !== "published" || !quiz.publishedVersionId) return null;
   const version = s.quizVersions.find((v) => v.id === quiz.publishedVersionId);
   const business = s.businesses.find((b) => b.id === quiz.businessId);
-  if (!version || !business) return null;
+  if (!version || !business || business.status === "suspended") return null;
   return { quizId: quiz.id, businessId: business.id, versionId: version.id, slug: quiz.slug, config: version.config, brand: { name: business.name, logoUrl: business.logoUrl, website: business.website }, plan: business.plan };
 }

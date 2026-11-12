@@ -1,7 +1,7 @@
 import "server-only";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import type { AiGeneration, Business, Lead, LeadNote, LeadSubmission, LeadTag, Publication, Quiz, QuizSubmission, QuizVersion, QuizVisit, Tag, User } from "@/types/domain";
+import type { AiGeneration, AuditLog, Business, Lead, LeadNote, LeadSubmission, LeadTag, PlatformSettings, Publication, Quiz, QuizSubmission, QuizVersion, QuizVisit, Tag, User } from "@/types/domain";
 
 /**
  * Base de données SIMULÉE (phase « données mockées »).
@@ -52,9 +52,11 @@ export interface DbState {
   leadNotes: LeadNote[];
   publications: Publication[];
   aiGenerations: AiGeneration[];
+  auditLogs: AuditLog[];
+  settings: PlatformSettings;
 }
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export function emptyState(): DbState {
   return {
@@ -75,6 +77,8 @@ export function emptyState(): DbState {
     leadNotes: [],
     publications: [],
     aiGenerations: [],
+    auditLogs: [],
+    settings: { registrationsOpen: true, announcement: "", planOverrides: {} },
   };
 }
 

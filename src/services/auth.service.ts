@@ -29,7 +29,7 @@ export function register(s: DbState, input: RegisterInput, now = new Date()): { 
   const email = normalizeEmail(input.email);
   if (s.users.some((u) => u.email === email)) throw conflict("Un compte existe déjà avec cette adresse email.", { email: "Adresse déjà utilisée." });
   const at = now.toISOString();
-  const user: User = { id: newId(), email, firstName: input.firstName.trim(), lastName: input.lastName.trim(), emailVerifiedAt: null, createdAt: at, updatedAt: at };
+  const user: User = { id: newId(), email, role: "user", lastLoginAt: null, firstName: input.firstName.trim(), lastName: input.lastName.trim(), emailVerifiedAt: null, createdAt: at, updatedAt: at };
   s.users.push(user);
   s.credentials.push({ userId: user.id, passwordHash: hashPassword(input.password) });
   const business: Business = {
@@ -48,6 +48,9 @@ export function register(s: DbState, input: RegisterInput, now = new Date()): { 
     bookingUrl: "",
     offers: [],
     plan: "free",
+    status: "active",
+    suspendedAt: null,
+    suspensionReason: "",
     onboardingCompletedAt: null,
     createdAt: at,
     updatedAt: at,

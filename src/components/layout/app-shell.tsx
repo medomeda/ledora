@@ -1,6 +1,6 @@
 "use client";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Bot, CalendarDays, Gauge, LifeBuoy, LogOut, Menu, Search, Settings, Store, Target, Users, X } from "lucide-react";
+import { Bot, CalendarDays, Gauge, LifeBuoy, LogOut, Menu, Search, Settings, ShieldCheck, Store, Target, Users, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -47,9 +47,10 @@ export interface ShellUser {
   email: string;
   emailVerified: boolean;
   businessName: string;
+  isAdmin?: boolean;
 }
 
-export function AppShell({ user, children }: { user: ShellUser; children: ReactNode }) {
+export function AppShell({ user, announcement, children }: { user: ShellUser; announcement?: string; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const [q, setQ] = useState("");
@@ -104,6 +105,7 @@ export function AppShell({ user, children }: { user: ShellUser; children: ReactN
               <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
               <DropdownMenuItem asChild><Link href="/settings"><Settings /> Paramètres du compte</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><Link href="/business"><Store /> Mon Business</Link></DropdownMenuItem>
+              {user.isAdmin && <DropdownMenuItem asChild><Link href="/admin"><ShieldCheck /> Administration</Link></DropdownMenuItem>}
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => void logoutAction()}><LogOut /> Se déconnecter</DropdownMenuItem>
             </DropdownMenuContent>
@@ -111,6 +113,7 @@ export function AppShell({ user, children }: { user: ShellUser; children: ReactN
         </header>
         <div className="border-b bg-card px-4 py-2 sm:hidden">{search}</div>
 
+        {announcement && <div role="status" className="border-b bg-info-soft px-4 py-2 text-sm text-info-soft-foreground sm:px-6">{announcement}</div>}
         {!user.emailVerified && (
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-accent/40 bg-accent-soft px-4 py-2 text-sm text-accent-soft-foreground sm:px-6">
             <span>Confirmez votre adresse email pour sécuriser votre compte.</span>

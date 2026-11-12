@@ -65,6 +65,7 @@ export function LoginForm({ next, reset, showDemo }: { next?: string; reset?: bo
           <div className="flex flex-wrap gap-2">
             <Button type="button" size="sm" variant="outline" onClick={() => { setValue("email", "demo@leadora.app"); setValue("password", "Leadora2026"); }}>Espace complet</Button>
             <Button type="button" size="sm" variant="outline" onClick={() => { setValue("email", "nouveau@leadora.app"); setValue("password", "Leadora2026"); }}>Espace vide</Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => { setValue("email", "admin@leadora.app"); setValue("password", "Leadora2026"); }}>Administration</Button>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">Mot de passe : Leadora2026</p>
         </div>

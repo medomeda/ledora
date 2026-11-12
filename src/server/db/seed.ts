@@ -9,7 +9,8 @@ import { completeQuiz, startQuiz, trackVisit } from "@/services/public.service";
 import { createQuiz, publishQuiz, saveQuizConfig, archiveQuiz } from "@/services/quiz.service";
 import { getFeatures } from "@/lib/features";
 import { savePublication } from "@/services/publication.service";
-import type { LeadStatus, QuizConfig } from "@/types/domain";
+import { newId } from "@/server/ids";
+import type { Business, LeadStatus, QuizConfig } from "@/types/domain";
 
 /**
  * Jeu de démonstration, relatif à la date du jour. Il est produit en rejouant les VRAIS services (visites, démarrages,
@@ -217,6 +218,78 @@ function seed(s: DbState) {
     { title: "Idée : quiz sur l'investissement débutant", content: "", platform: "linkedin", contentPillar: "Lead magnet", objective: "Générer des leads", status: "idea" },
   ];
   if (getFeatures().publications) for (const p of pubs) savePublication(s, ctxAt(ago(7)), p);
+
+  seedPlatform(s, now);
+}
+
+/**
+ * Administration et clientèle de la plateforme : un compte administrateur et une dizaine d'autres comptes clients
+ * (offres, ancienneté, activité et statuts variés) pour que le back-office ait de quoi montrer. Générateur
+ * aléatoire distinct : ajouter ce bloc ne modifie pas les données de l'espace de démonstration.
+ */
+function seedPlatform(s: DbState, now: Date) {
+  const random = rng(4242);
+  const day = 86400000;
+  const admin = register(s, { firstName: "Équipe", lastName: "Leadora", email: "admin@leadora.app", password: DEMO_PASSWORD }, new Date(now.getTime() - 120 * day));
+  admin.user.role = "admin";
+  admin.user.emailVerifiedAt = admin.user.createdAt;
+  s.businesses = s.businesses.filter((b) => b.ownerId !== admin.user.id);
+
+  const ai = new MockAiProvider();
+  type Spec = { first: string; last: string; email: string; brand: string; type: Business["activityType"]; industry: string; plan: Business["plan"]; age: number; verified: boolean; quizzes: number; people: number; login: number | null };
+  const specs: Spec[] = [
+    { first: "Moussa", last: "Koné", email: "moussa@koneformation.example", brand: "Koné Formation", type: "formation", industry: "Formation professionnelle", plan: "pro", age: 95, verified: true, quizzes: 2, people: 60, login: 0 },
+    { first: "Julie", last: "Moreau", email: "julie@moreau-conseil.example", brand: "Moreau Conseil", type: "conseil", industry: "Conseil en organisation", plan: "pro", age: 70, verified: true, quizzes: 2, people: 36, login: 1 },
+    { first: "Karim", last: "Haddad", email: "karim@haddadcoaching.example", brand: "Haddad Coaching", type: "coaching", industry: "Coaching sportif", plan: "starter", age: 55, verified: true, quizzes: 1, people: 28, login: 2 },
+    { first: "Inès", last: "Laurent", email: "ines@atelier-ines.example", brand: "Atelier Inès", type: "services", industry: "Design d'intérieur", plan: "starter", age: 41, verified: true, quizzes: 1, people: 18, login: 5 },
+    { first: "Seydou", last: "Camara", email: "seydou@camara-digital.example", brand: "Camara Digital", type: "conseil", industry: "Marketing digital", plan: "free", age: 33, verified: true, quizzes: 1, people: 94, login: 0 },
+    { first: "Chloé", last: "Bernard", email: "chloe@chloe-bernard.example", brand: "Chloé Bernard", type: "coaching", industry: "Développement personnel", plan: "free", age: 24, verified: true, quizzes: 1, people: 12, login: 3 },
+    { first: "Rachid", last: "Sylla", email: "rachid@sylla-entreprendre.example", brand: "Sylla Entreprendre", type: "entrepreneuriat", industry: "Accompagnement de créateurs", plan: "free", age: 18, verified: false, quizzes: 1, people: 7, login: 12 },
+    { first: "Estelle", last: "Petit", email: "estelle@petit-langues.example", brand: "Petit Langues", type: "formation", industry: "Cours de langues", plan: "free", age: 12, verified: true, quizzes: 1, people: 5, login: 4 },
+    { first: "Boubacar", last: "Diop", email: "boubacar@diop-finance.example", brand: "Diop Finance Express", type: "services", industry: "Crédit et finance", plan: "free", age: 9, verified: true, quizzes: 1, people: 9, login: 6 },
+    { first: "Laura", last: "Fofana", email: "laura@fofana-rh.example", brand: "Fofana RH", type: "conseil", industry: "Ressources humaines", plan: "free", age: 6, verified: false, quizzes: 0, people: 0, login: null },
+    { first: "Samuel", last: "Ndiaye", email: "samuel@ndiaye.example", brand: "Samuel Ndiaye", type: "autre", industry: "", plan: "free", age: 3, verified: false, quizzes: 0, people: 0, login: null },
+    { first: "Clarisse", last: "Yao", email: "clarisse@yao-beaute.example", brand: "Yao Beauté", type: "services", industry: "Soins esthétiques", plan: "starter", age: 2, verified: true, quizzes: 1, people: 4, login: 0 },
+  ];
+
+  specs.forEach((sp, n) => {
+    const created = new Date(now.getTime() - sp.age * day);
+    const { user, business } = register(s, { firstName: sp.first, lastName: sp.last, email: sp.email, password: DEMO_PASSWORD }, created);
+    if (sp.verified) user.emailVerifiedAt = created.toISOString();
+    user.lastLoginAt = sp.login === null ? null : new Date(now.getTime() - sp.login * day - 3600000).toISOString();
+    Object.assign(business, { name: sp.brand, slug: uniqueBusinessSlug(s, sp.brand), activityType: sp.type, industry: sp.industry, managerName: `${sp.first} ${sp.last}`, contactEmail: sp.email, plan: sp.plan, onboardingCompletedAt: sp.quizzes > 0 ? created.toISOString() : null });
+    const ctxBiz = { name: business.name, activityType: business.activityType, industry: business.industry, description: "", offers: [], bookingUrl: "" };
+    for (let k = 0; k < sp.quizzes; k++) {
+      const topic = ["la gestion du temps", "la préparation d'un projet", "la santé au travail", "la prise de parole"][(n + k) % 4]!;
+      const cfg = ai.buildQuiz({ brief: `Quiz de diagnostic sur ${topic} pour des prospects de ${sp.brand}`, target: "prospects", tone: "chaleureux", questionCount: 5, business: ctxBiz });
+      cfg.title = `Diagnostic : ${topic}`;
+      const at = new Date(created.getTime() + (k + 1) * day);
+      const quiz = createQuiz(s, ctxFor(user.id, at), { title: cfg.title, config: cfg });
+      publishQuiz(s, ctxFor(user.id, new Date(at.getTime() + 3600000)), quiz.id);
+      const count = Math.round(sp.people / sp.quizzes);
+      for (let i = 0; i < count; i++) {
+        const t = new Date(at.getTime() + 2 * 3600000 + Math.floor(random() * Math.max(1, now.getTime() - at.getTime() - 4 * 3600000)));
+        const sid = `plat-${n}-${k}-${i}`;
+        startQuiz(s, quiz.slug, sid, {}, t);
+        if (random() < 0.22) continue;
+        const answers: Record<string, string[]> = {};
+        for (const q of cfg.questions) answers[q.id] = [q.options[Math.floor(random() * q.options.length)]!.id];
+        const person = { firstName: ["Awa", "Ali", "Nina", "Omar", "Zoé", "Luc"][i % 6]!, lastName: ["Traoré", "Roux", "Diaby", "Faure"][i % 4]!, email: `p${n}-${k}-${i}@mail.test`, phone: "", marketingConsent: random() < 0.7 };
+        completeQuiz(s, quiz.slug, sid, answers, person, new Date(t.getTime() + 150000));
+      }
+    }
+  });
+
+  // Cas à surveiller : un compte suspendu (les autres, comme un quota presque atteint, découlent des données).
+  const suspended = s.businesses.find((b) => b.name === "Diop Finance Express")!;
+  suspended.status = "suspended";
+  suspended.suspendedAt = new Date(now.getTime() - 2 * day).toISOString();
+  suspended.suspensionReason = "Contenu trompeur signalé (promesses de gains garantis)";
+  s.auditLogs.push(
+    { id: newId(), actorId: admin.user.id, actorEmail: admin.user.email, action: "account.suspended", targetType: "account", targetId: suspended.id, targetLabel: suspended.name, details: suspended.suspensionReason, createdAt: suspended.suspendedAt },
+    { id: newId(), actorId: admin.user.id, actorEmail: admin.user.email, action: "account.plan_changed", targetType: "account", targetId: s.businesses.find((b) => b.name === "Koné Formation")!.id, targetLabel: "Koné Formation", details: "Starter → Pro", createdAt: new Date(now.getTime() - 20 * day).toISOString() },
+    { id: newId(), actorId: admin.user.id, actorEmail: admin.user.email, action: "settings.updated", targetType: "settings", targetId: "platform", targetLabel: "Réglages de la plateforme", details: "Inscriptions ouvertes", createdAt: new Date(now.getTime() - 60 * day).toISOString() },
+  );
 }
 
 registerSeeder(seed);

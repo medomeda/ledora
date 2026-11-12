@@ -1,4 +1,4 @@
-import { PLANS } from "@/lib/constants/plans";
+import { planDef } from "@/lib/constants/plans";
 import { classifySource } from "@/lib/utils/traffic";
 import type { DbState } from "@/server/db/store";
 import { invalidState, notFound, quotaExceeded, validation } from "@/server/errors";
@@ -55,7 +55,7 @@ export function startQuiz(s: DbState, slug: string, sessionId: string, utm: Utm,
   const existing = findSubmission(s, pq.quizId, sessionId);
   if (existing) return { submissionId: existing.id };
   const business = s.businesses.find((b) => b.id === pq.businessId)!;
-  const max = PLANS[business.plan].maxMonthlySubmissions;
+  const max = planDef(s, business.plan).maxMonthlySubmissions;
   if (max !== null && monthlySubmissions(s, business.id, now) >= max) throw quotaExceeded("Ce quiz n'accepte plus de participations pour le moment.");
   const sub: QuizSubmission = {
     id: newId(),

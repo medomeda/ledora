@@ -21,6 +21,7 @@ Comptes de démonstration (mot de passe `Leadora2026`, raccourcis sur la page de
 |---|---|
 | `demo@leadora.app` | Espace complet : 4 quiz (2 publiés, 1 brouillon, 1 archivé), ~100 prospects, statistiques sur 35 jours |
 | `nouveau@leadora.app` | Espace vide : onboarding, états vides, premier quiz à créer |
+| `admin@leadora.app` | **Administration** (`/admin`) : ~14 comptes clients (offres, anciennetés, un compte suspendu), journal d'audit |
 
 Quiz publics de démonstration : `/q/maturite-financiere` (design par défaut) et `/q/type-entrepreneur` (design personnalisé : thème Océan, titres en Fraunces, centré).
 Les données sont relatives à la date du jour, persistées dans `.data/leadora-demo.json`.
@@ -53,6 +54,10 @@ jeu de formulations (voir les exemples affichés) en attendant un vrai modèle d
 **Au chaud (désactivés)** : le module **Assistant IA** du menu (`LEADORA_FEATURE_ASSISTANT=1`) et le calendrier de
 **Publications** (`LEADORA_FEATURE_PUBLICATIONS=1`) : codés et testés, absents du menu, pages en 404, actions refusées.
 Voir `.env.example`, puis redémarrer.
+
+## Administration de la plateforme
+
+Réservée au rôle `admin` (une page 404 pour tout autre visiteur), à `/admin` : vue d'ensemble (KPI, croissance, répartition par offre, comptes à surveiller), **comptes** (recherche, filtres, fiche avec usage vs quotas ; changer l'offre, suspendre avec motif, réactiver, confirmer l'email, lien de réinitialisation, déconnecter partout, promouvoir admin, supprimer définitivement avec confirmation), **quiz** (modération : dépublier ou archiver avec motif), **offres et quotas** (quotas et prix modifiables sans redéploiement), **journal d'audit** (toute action est consignée) et **réglages** (ouverture des inscriptions, annonce affichée à tous les clients). Un administrateur sans espace client est redirigé vers `/admin` après connexion.
 
 ## Parcours couverts
 

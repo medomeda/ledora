@@ -36,3 +36,20 @@ export const PUBLICATION_OBJECTIVES = ["Notoriété", "Engagement", "Générer d
 
 /** Couleurs des tags (CRM). */
 export const TAG_COLORS = ["#6d5dfc", "#0f9d8a", "#e2574c", "#d98e04", "#3b82f6", "#8b5cf6", "#64748b"];
+
+export const AUDIT_ACTION_LABELS: Record<import("@/types/domain").AuditAction, string> = {
+  "account.plan_changed": "Offre modifiée",
+  "account.suspended": "Compte suspendu",
+  "account.reactivated": "Compte réactivé",
+  "account.email_verified": "Email confirmé",
+  "account.reset_link_issued": "Lien de réinitialisation émis",
+  "account.sessions_revoked": "Sessions révoquées",
+  "account.role_changed": "Rôle modifié",
+  "account.deleted": "Compte supprimé",
+  "quiz.unpublished": "Quiz dépublié",
+  "quiz.archived": "Quiz archivé",
+  "plan.updated": "Offre configurée",
+  "settings.updated": "Réglages modifiés",
+};
+
+export const PLAN_LABELS = { free: "Gratuit", starter: "Starter", pro: "Pro" } as const;

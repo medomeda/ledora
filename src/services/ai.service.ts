@@ -1,4 +1,4 @@
-import { PLANS } from "@/lib/constants/plans";
+import { planDef } from "@/lib/constants/plans";
 import { isoNow, requireBusiness, type Ctx } from "@/server/context";
 import type { DbState } from "@/server/db/store";
 import { notFound, quotaExceeded } from "@/server/errors";
@@ -21,7 +21,7 @@ export interface AiUsage {
 export function getUsage(s: Readonly<DbState>, business: Business, now: Date): AiUsage {
   const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
   const used = s.aiGenerations.filter((g) => g.businessId === business.id && g.createdAt >= start && g.status === "success").length;
-  return { used, limit: PLANS[business.plan].maxMonthlyAiGenerations };
+  return { used, limit: planDef(s, business.plan).maxMonthlyAiGenerations };
 }
 
 /** À appeler AVANT de solliciter le fournisseur. */

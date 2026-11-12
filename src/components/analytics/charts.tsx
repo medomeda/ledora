@@ -2,11 +2,10 @@
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import type { DayPoint } from "@/services/analytics.service";
 
 /** Courbe d'évolution (jours). Couleurs : encre = participations terminées, souci = prospects collectés. */
-export function TrendChart({ data, series }: { data: DayPoint[]; series: Array<{ key: "visits" | "completed" | "leads"; label: string; color: string }> }) {
-  const total = data.reduce((a, d) => a + d.visits + d.completed + d.leads, 0);
+export function TrendChart({ data, series }: { data: ReadonlyArray<{ date: string }>; series: Array<{ key: string; label: string; color: string }> }) {
+  const total = data.reduce((a, d) => a + series.reduce((n, s) => n + (Number((d as Record<string, unknown>)[s.key]) || 0), 0), 0);
   if (total === 0) return <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">Pas encore de données sur la période.</div>;
   return (
     <div className="h-64 w-full" role="img" aria-label={`Évolution sur ${data.length} jours : ${series.map((s) => s.label).join(", ")}`}>

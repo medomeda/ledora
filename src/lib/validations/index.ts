@@ -212,3 +212,16 @@ export const aiImproveSchema = z.object({ kind: z.enum(["title", "introduction",
 export const aiRefineSchema = z.object({ config: quizConfigSchema, instruction: required(300, "Décrivez le changement souhaité.") });
 export const aiCreateFromConfigSchema = z.object({ config: quizConfigSchema });
 export const aiAdoptSchema = z.object({ generationId: id });
+
+// ---- Administration -------------------------------------------------------------------------------------------
+const planId = z.enum(["free", "starter", "pro"]);
+const quotaField = z.number().int("Entier attendu.").min(0, "Valeur positive attendue.").max(1_000_000).nullable();
+export const adminAccountSchema = z.object({ businessId: z.string().min(1) });
+export const adminPlanChangeSchema = adminAccountSchema.extend({ plan: planId });
+export const adminSuspendSchema = adminAccountSchema.extend({ reason: z.string().trim().min(3, "Indiquez le motif.").max(300, "300 caractères maximum.") });
+export const adminDeleteSchema = adminAccountSchema.extend({ confirm: z.string().trim().min(1, "Saisissez l'adresse pour confirmer.").max(254) });
+export const adminRoleSchema = z.object({ userId: z.string().min(1), role: z.enum(["user", "admin"]) });
+export const adminModerateSchema = z.object({ quizId: z.string().min(1), action: z.enum(["unpublish", "archive"]), reason: z.string().trim().min(3, "Indiquez le motif.").max(300, "300 caractères maximum.") });
+export const adminSettingsSchema = z.object({ registrationsOpen: z.boolean(), announcement: z.string().trim().max(240, "240 caractères maximum.") });
+export const adminPlanSchema = z.object({ plan: planId, maxActiveQuizzes: quotaField, maxMonthlySubmissions: quotaField, maxMonthlyAiGenerations: quotaField, priceLabel: z.string().trim().min(1, "Le prix affiché est obligatoire.").max(40, "40 caractères maximum.") });
+export const adminResetPlanSchema = z.object({ plan: planId });

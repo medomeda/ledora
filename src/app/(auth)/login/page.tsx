@@ -9,7 +9,8 @@ export const metadata: Metadata = { title: "Connexion" };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; reset?: string }> }) {
   const sp = await searchParams;
-  if (await getSession()) redirect(safeNext(sp.next));
+  const session = await getSession();
+  if (session) redirect(safeNext(sp.next, session.role === "admin" ? "/admin" : "/dashboard"));
   return (
     <>
       <h1 className="font-display text-3xl font-semibold">Bon retour</h1>

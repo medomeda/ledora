@@ -10,9 +10,14 @@ export type ISODateTime = string;
 
 export type PlanId = "free" | "starter" | "pro";
 
+export type UserRole = "user" | "admin";
+
 export interface User {
   id: string;
   email: string;
+  /** « admin » : accès au back-office de la plateforme (/admin). Les comptes clients sont « user ». */
+  role: UserRole;
+  lastLoginAt: ISODateTime | null;
   firstName: string;
   lastName: string;
   emailVerifiedAt: ISODateTime | null;
@@ -36,10 +41,16 @@ export interface Business {
   bookingUrl: string;
   offers: string[];
   plan: PlanId;
+  /** « suspended » : espace verrouillé et quiz publics indisponibles (décision d'un administrateur). */
+  status: BusinessStatus;
+  suspendedAt: ISODateTime | null;
+  suspensionReason: string;
   onboardingCompletedAt: ISODateTime | null;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
 }
+
+export type BusinessStatus = "active" | "suspended";
 
 export type ActivityType = "coaching" | "formation" | "conseil" | "entrepreneuriat" | "services" | "autre";
 
@@ -303,4 +314,46 @@ export interface AiGeneration {
   model: string;
   status: "success" | "error";
   createdAt: ISODateTime;
+}
+
+/** Journal d'audit du back-office : toute action d'un administrateur y est consignée (qui, quoi, sur quoi, quand). */
+export interface AuditLog {
+  id: string;
+  actorId: string;
+  actorEmail: string;
+  action: AuditAction;
+  targetType: "account" | "quiz" | "plan" | "settings";
+  targetId: string;
+  targetLabel: string;
+  details: string;
+  createdAt: ISODateTime;
+}
+
+export type AuditAction =
+  | "account.plan_changed"
+  | "account.suspended"
+  | "account.reactivated"
+  | "account.email_verified"
+  | "account.reset_link_issued"
+  | "account.sessions_revoked"
+  | "account.role_changed"
+  | "account.deleted"
+  | "quiz.unpublished"
+  | "quiz.archived"
+  | "plan.updated"
+  | "settings.updated";
+
+export interface PlanOverride {
+  maxActiveQuizzes?: number | null;
+  maxMonthlySubmissions?: number | null;
+  maxMonthlyAiGenerations?: number | null;
+  priceLabel?: string;
+}
+
+/** Réglages de la plateforme, modifiables sans redéploiement depuis l'administration. */
+export interface PlatformSettings {
+  registrationsOpen: boolean;
+  /** Message affiché en bandeau dans l'espace de tous les clients (vide = aucun). */
+  announcement: string;
+  planOverrides: Partial<Record<PlanId, PlanOverride>>;
 }

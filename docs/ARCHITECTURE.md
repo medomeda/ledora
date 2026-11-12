@@ -83,6 +83,16 @@ fond sombre détecté par luminance). L'aperçu (`PreviewFrame`) réutilise `Qui
 Design il se met à jour à chaque réglage et propose un sélecteur d'écran (parcours, introduction, question, formulaire,
 résultat, avec des données d'exemple) et un basculement ordinateur / mobile.
 
+## Administration (back-office)
+
+- **Rôle** : `User.role` (`user` | `admin`). Les pages `/admin/*` passent par `requireAdminUser()` (404 pour un non-admin, pour ne pas révéler la route) ; **et** chaque fonction de `services/admin.service.ts` appelle `requireAdmin(s, ctx)` : le contrôle d'accès ne dépend jamais de l'interface. Un compte admin n'a pas d'espace client ; `requireUser()` le renvoie vers `/admin`.
+- **Audit** : toute modification (offre, suspension, rôle, suppression, modération, quotas, réglages) écrit un `AuditLog` dans la même transaction que l'action. Le journal est en lecture seule.
+- **Suspension** : `Business.status`. Effets : espace verrouillé (écran dédié), `authed()` refuse toute écriture, `getPublicQuiz()` ne sert plus ses quiz. Données conservées ; réversible.
+- **Offres modifiables** : `settings.planOverrides` surcharge les valeurs par défaut de `lib/constants/plans.ts` ; les services lisent `planDef(s, plan)` (jamais `PLANS` directement). Effet immédiat, y compris sur le prix affiché de la landing page.
+- **Réglages** : `settings.registrationsOpen` (inscriptions) et `settings.announcement` (bandeau dans l'espace des clients).
+- **Suppression de compte** : cascade complète (quiz, versions, visites, participations, prospects, tags, notes, IA, sessions, identifiants) après saisie de l'email du propriétaire.
+- Schéma de la base simulée passé en version 2 (rôle, statut de compte, `auditLogs`, `settings`) : l'ancien fichier `.data` est régénéré au premier démarrage.
+
 ## Sécurité en place
 
 Validation Zod côté serveur sur toutes les entrées · mots de passe scrypt · sessions httpOnly/SameSite · limitation de

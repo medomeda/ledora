@@ -1,6 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import "@/server/bootstrap";
 import { read, tx } from "@/server/db/store";
@@ -21,10 +21,11 @@ export interface SessionUser {
   firstName: string;
   lastName: string;
   emailVerified: boolean;
+  role: User["role"];
   createdAt: string;
 }
 
-export const toSessionUser = (u: User): SessionUser => ({ id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName, emailVerified: !!u.emailVerifiedAt, createdAt: u.createdAt });
+export const toSessionUser = (u: User): SessionUser => ({ id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName, emailVerified: !!u.emailVerifiedAt, role: u.role, createdAt: u.createdAt });
 
 export async function createSession(userId: string) {
   const token = newToken();
@@ -33,6 +34,8 @@ export async function createSession(userId: string) {
   tx((s) => {
     s.sessions = s.sessions.filter((x) => new Date(x.expiresAt) > now);
     s.sessions.push({ tokenHash: sha256(token), userId, expiresAt: expiresAt.toISOString(), createdAt: now.toISOString() });
+    const u = s.users.find((x) => x.id === userId);
+    if (u) u.lastLoginAt = now.toISOString();
   });
   const jar = await cookies();
   jar.set(SESSION_COOKIE, token, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", expires: expiresAt });
@@ -67,9 +70,19 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
 export async function requireUser(next?: string): Promise<SessionUser> {
   const user = await getSession();
   if (!user) redirect(next ? `/login?next=${encodeURIComponent(next)}` : "/login");
+  // Un administrateur sans espace client n'a pas de pages « client » : son poste de travail est /admin.
+  if (user.role === "admin" && !getBusinessOf(user.id)) redirect("/admin");
   return user;
 }
 
 export function getBusinessOf(userId: string): Business | null {
   return read((s) => s.businesses.find((b) => b.ownerId === userId) ?? null);
+}
+
+/** Pages du back-office : réservées aux administrateurs. Tout autre visiteur voit une page 404 (l'existence de /admin n'est pas révélée). */
+export async function requireAdminUser(next = "/admin"): Promise<SessionUser> {
+  const user = await getSession();
+  if (!user) redirect(`/login?next=${encodeURIComponent(next)}`);
+  if (user.role !== "admin") notFound();
+  return user;
 }

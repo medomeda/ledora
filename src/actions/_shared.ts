@@ -1,6 +1,7 @@
 import "server-only";
 import type { z } from "zod";
 import { getSession, type SessionUser } from "@/lib/auth/session";
+import { read } from "@/server/db/store";
 import { ctxFor, type Ctx } from "@/server/context";
 import { AppError } from "@/server/errors";
 
@@ -32,6 +33,8 @@ export async function authed<S extends z.ZodType, T>(schema: S, raw: unknown, ru
   if (!user) return { ok: false, error: "Votre session a expiré. Reconnectez-vous." };
   const parsed = schema.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "Certains champs sont invalides.", fieldErrors: fieldErrorsOf(parsed.error) };
+  // Espace suspendu par un administrateur : plus aucune écriture.
+  if (read((s) => s.businesses.some((b) => b.ownerId === user.id && b.status === "suspended"))) return { ok: false, error: "Votre espace est suspendu. Contactez le support." };
   try {
     return { ok: true, data: await run(parsed.data, ctxFor(user.id), user) };
   } catch (err) {
