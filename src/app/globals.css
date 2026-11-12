@@ -116,6 +116,25 @@
     transform: none;
   }
 }
+/* Apparition retardée : ce qui ne dure que quelques millisecondes ne s'affiche jamais (évite le scintillement). */
+@keyframes delayed-show {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-spin-delayed {
+  animation:
+    delayed-show 0.15s linear 0.2s both,
+    nav-spin 1s linear infinite;
+}
+@keyframes nav-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 .animate-pop-in {
   animation: pop-in 0.28s ease both;
 }

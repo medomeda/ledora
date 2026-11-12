@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { NavPending } from "@/components/layout/nav-pending";
 import { cn } from "@/lib/utils/cn";
 
 /** Onglets de navigation entre sous-pages (chaque onglet a sa propre adresse). */
@@ -13,7 +14,7 @@ export function TabNav({ tabs, label }: { tabs: Array<{ href: string; label: str
           const active = pathname === t.href;
           return (
             <li key={t.href}>
-              <Link href={t.href} aria-current={active ? "page" : undefined} className={cn("block whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors", active ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>{t.label}</Link>
+              <Link href={t.href} aria-current={active ? "page" : undefined} className={cn("flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors", active ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>{t.label}<NavPending /></Link>
             </li>
           );
         })}

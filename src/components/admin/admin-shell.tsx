@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { logoutAction } from "@/actions/auth";
 import { Brand } from "@/components/layout/brand";
+import { NavPending } from "@/components/layout/nav-pending";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Permission } from "@/lib/permissions/staff";
@@ -30,7 +31,7 @@ function Links({ onNavigate, permissions }: { onNavigate?: () => void; permissio
         const active = exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link key={href} href={href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors", active ? "bg-white/12 text-white" : "text-white/65 hover:bg-white/8 hover:text-white")}>
-            <Icon className="size-[18px]" />{label}
+            <Icon className="size-[18px]" />{label}<NavPending className="ml-auto" />
           </Link>
         );
       })}

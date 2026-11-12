@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown";
 import { cn } from "@/lib/utils/cn";
 import { useFeatures } from "@/components/layout/features-context";
+import { NavPending } from "@/components/layout/nav-pending";
 import { initials } from "@/lib/utils/text";
 import { toast } from "sonner";
 
@@ -34,6 +35,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
           <Link key={href} href={href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors", active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
             <Icon className="size-[18px]" />
             {label}
+            <NavPending className="ml-auto" />
           </Link>
         );
       })}
