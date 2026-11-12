@@ -15,6 +15,12 @@ import type { QuizOption } from "@/types/domain";
 
 const int = (v: string) => Math.max(-100, Math.min(100, Math.trunc(Number(v)) || 0));
 
+/**
+ * Réglages avancés d'une question (description, choix multiple, réponse facultative) : conservés dans le modèle et le
+ * moteur, mais masqués dans l'éditeur pour rester simple. Passer à true pour les réafficher.
+ */
+const SHOW_ADVANCED_QUESTION_FIELDS = false;
+
 function move<T>(arr: T[], from: number, to: number) {
   if (to < 0 || to >= arr.length) return;
   const [item] = arr.splice(from, 1);
@@ -51,7 +57,7 @@ export function QuestionsStep({ config, update, goTo }: StepProps) {
             <div className="flex items-center gap-2 p-3 sm:p-4">
               <button type="button" onClick={() => setOpen(isOpen ? null : q.id)} aria-expanded={isOpen} className="flex min-w-0 flex-1 items-center gap-3 text-left">
                 <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-sm font-semibold">{qi + 1}</span>
-                <span className="min-w-0"><span className="block truncate font-medium">{q.title || "Question sans intitulé"}</span><span className="block text-xs text-muted-foreground">{q.type === "single" ? "Choix unique" : "Choix multiple"} · {q.options.length} réponses{q.isRequired ? "" : " · facultative"}</span></span>
+                <span className="min-w-0"><span className="block truncate font-medium">{q.title || "Question sans intitulé"}</span><span className="block text-xs text-muted-foreground">{SHOW_ADVANCED_QUESTION_FIELDS ? `${q.type === "single" ? "Choix unique" : "Choix multiple"} · ` : ""}{q.options.length} réponses{SHOW_ADVANCED_QUESTION_FIELDS && !q.isRequired ? " · facultative" : ""}</span></span>
                 <ChevronDown className={cn("ml-auto size-4 shrink-0 text-muted-foreground transition-transform", isOpen && "rotate-180")} />
               </button>
               <div className="flex shrink-0">
@@ -67,6 +73,8 @@ export function QuestionsStep({ config, update, goTo }: StepProps) {
                   <Input id={`q-${q.id}`} value={q.title} maxLength={300} onChange={(e) => update((c) => void (c.questions[qi]!.title = e.target.value))} placeholder="Comment gérez-vous votre argent à la fin du mois ?" />
                   <ImproveButton kind="question" value={q.title} onApply={(v) => update((c) => void (c.questions[qi]!.title = v.slice(0, 300)))} />
                 </div>
+                {SHOW_ADVANCED_QUESTION_FIELDS && (
+                  <>
                 <div className="space-y-1.5">
                   <label htmlFor={`qd-${q.id}`} className="flex justify-between text-sm font-medium"><span>Description</span><span className="font-normal text-muted-foreground">facultatif</span></label>
                   <Textarea id={`qd-${q.id}`} rows={2} value={q.description} maxLength={500} onChange={(e) => update((c) => void (c.questions[qi]!.description = e.target.value))} />
@@ -75,6 +83,9 @@ export function QuestionsStep({ config, update, goTo }: StepProps) {
                   <div className="flex items-center gap-2"><label htmlFor={`qt-${q.id}`} className="text-sm font-medium">Type</label><Select id={`qt-${q.id}`} className="w-48" value={q.type} onChange={(e) => update((c) => void (c.questions[qi]!.type = e.target.value as "single" | "multiple"))}><option value="single">Choix unique</option><option value="multiple">Choix multiple</option></Select></div>
                   <label className="flex items-center gap-2 text-sm"><Switch checked={q.isRequired} onChange={(e) => update((c) => void (c.questions[qi]!.isRequired = e.target.checked))} /> Réponse obligatoire</label>
                 </div>
+
+                  </>
+                )}
 
                 <div>
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
