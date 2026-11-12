@@ -23,7 +23,7 @@ export const metadata: Metadata = { title: "Dashboard" };
 export default async function DashboardPage() {
   const user = await requireUser("/dashboard");
   const ctx = ctxFor(user.id);
-  const { data, checklist, quizCount } = read((s) => ({ data: getDashboard(s, ctx), checklist: getChecklist(s, ctx), quizCount: s.quizzes.filter((q) => q.status !== "archived").length }));
+  const { data, checklist, quizCount } = await read({ user: user.id }, (s) => ({ data: getDashboard(s, ctx), checklist: getChecklist(s, ctx), quizCount: s.quizzes.filter((q) => q.status !== "archived").length }));
   const k = data.kpis;
   const checklistDone = checklist.filter((c) => c.done).length;
 

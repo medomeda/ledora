@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Créer mon espace" };
 
 export default async function RegisterPage() {
   if (await getSession()) redirect("/dashboard");
-  const open = read((s) => s.settings.registrationsOpen);
+  const open = await read("settings", (s) => s.settings.registrationsOpen);
   if (!open) return (
     <>
       <h1 className="font-display text-3xl font-semibold">Inscriptions fermées</h1>

@@ -32,7 +32,7 @@ export async function createSession(userId: string) {
   const token = newToken();
   const now = new Date();
   const expiresAt = new Date(now.getTime() + SESSION_TTL_MS);
-  tx((s) => {
+  await tx({ account: userId }, (s) => {
     s.sessions = s.sessions.filter((x) => new Date(x.expiresAt) > now);
     s.sessions.push({ tokenHash: sha256(token), userId, expiresAt: expiresAt.toISOString(), createdAt: now.toISOString() });
     const u = s.users.find((x) => x.id === userId);
@@ -47,7 +47,7 @@ export async function destroySession() {
   const token = jar.get(SESSION_COOKIE)?.value;
   if (token) {
     const h = sha256(token);
-    tx((s) => {
+    await tx({ session: h }, (s) => {
       s.sessions = s.sessions.filter((x) => x.tokenHash !== h);
     });
   }
@@ -59,7 +59,7 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
   const h = sha256(token);
-  return read((s) => {
+  return read({ session: h }, (s) => {
     const row = s.sessions.find((x) => x.tokenHash === h);
     if (!row || new Date(row.expiresAt) <= new Date()) return null;
     const user = s.users.find((u) => u.id === row.userId);
@@ -72,13 +72,11 @@ export async function requireUser(next?: string): Promise<SessionUser> {
   const user = await getSession();
   if (!user) redirect(next ? `/login?next=${encodeURIComponent(next)}` : "/login");
   // Un administrateur sans espace client n'a pas de pages « client » : son poste de travail est /admin.
-  if (isStaff(user.role) && !getBusinessOf(user.id)) redirect("/admin");
+  if (isStaff(user.role) && !(await getBusinessOf(user.id))) redirect("/admin");
   return user;
 }
 
-export function getBusinessOf(userId: string): Business | null {
-  return read((s) => s.businesses.find((b) => b.ownerId === userId) ?? null);
-}
+export const getBusinessOf = cache(async (userId: string): Promise<Business | null> => read({ account: userId }, (s) => s.businesses.find((b) => b.ownerId === userId) ?? null));
 
 /** Pages du back-office : réservées à l'équipe, selon la permission requise. Tout autre visiteur voit une page 404 (l'existence de /admin n'est pas révélée). */
 export async function requireStaffUser(next = "/admin", permission: Permission = "view"): Promise<SessionUser> {

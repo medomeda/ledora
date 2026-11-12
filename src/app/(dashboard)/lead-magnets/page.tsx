@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "Lead Magnets" };
 
 export default async function LeadMagnetsPage() {
   const user = await requireUser("/lead-magnets");
-  const rows = read((s) => listQuizzes(s, ctxFor(user.id)));
+  const rows = await read({ user: user.id }, (s) => listQuizzes(s, ctxFor(user.id)));
   return (
     <div>
       <PageHeader title="Lead Magnets" description="Vos quiz et diagnostics : créez-les, publiez-les, partagez-les." actions={<Button asChild><Link href="/lead-magnets/new"><Plus /> Nouveau quiz</Link></Button>} />

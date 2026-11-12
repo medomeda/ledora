@@ -14,7 +14,7 @@ import { redirect } from "next/navigation";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
-  const business = getBusinessOf(user.id);
+  const business = await getBusinessOf(user.id);
   // Un administrateur sans espace client n'a rien à faire ici : son poste de travail est /admin.
   if (!business && isStaff(user.role)) redirect("/admin");
   if (business?.status === "suspended") {
@@ -30,7 +30,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       </div>
     );
   }
-  const announcement = read((s) => s.settings.announcement);
+  const announcement = await read("settings", (s) => s.settings.announcement);
   return (
     <FeaturesProvider features={getFeatures()}>
       <AppShell user={{ firstName: user.firstName, lastName: user.lastName, email: user.email, emailVerified: user.emailVerified, businessName: business?.name ?? "Mon espace", isAdmin: isStaff(user.role) }} announcement={announcement}>

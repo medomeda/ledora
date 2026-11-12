@@ -3,17 +3,32 @@
 Plateforme SaaS pour créer des quiz de diagnostic, collecter des prospects et les qualifier : créateur de quiz en
 7 étapes avec assistance IA et design personnalisable, pages publiques, CRM et statistiques.
 
-> **Phase actuelle : application complète sur données simulées côté serveur.**
-> Règles métier, permissions et validations sont réelles et testées ; seules la persistance (PostgreSQL + Drizzle),
-> et l'authentification (Better Auth) sont simulées. Voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+> **Phase actuelle : application complète avec persistance PostgreSQL.**
+> Règles métier, permissions, validations et persistance (PostgreSQL + Drizzle) sont réelles et testées. Restent
+> simulés : l'envoi d'emails, le fournisseur d'IA, le stockage de fichiers et le paiement ; l'authentification est
+> maison (sécurisée) en attendant Better Auth. Voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 > et [docs/SUIVI.md](docs/SUIVI.md). Cahier des charges : [docs/PRD.md](docs/PRD.md).
 
 ## Démarrer
 
 ```bash
 npm install
-npm run dev          # http://localhost:3800
+cp .env.example .env.local      # puis décommentez DATABASE_URL (PostgreSQL local, voir ci-dessous)
+npm run db:up                   # PostgreSQL 16 dans Docker (port 5440)
+npm run dev                     # http://localhost:3300 : migrations appliquées et jeu de démonstration chargé au 1er démarrage
 ```
+
+Trois modes de stockage, choisis par l'environnement :
+
+| Mode | Activation | Usage |
+|---|---|---|
+| **PostgreSQL** | `DATABASE_URL=postgres://…` | Développement et production |
+| **PGlite** (PostgreSQL embarqué, sans Docker) | `LEADORA_DB=pglite` | Essai rapide, données dans `.data/pglite` |
+| **Mémoire + fichier JSON** | rien (défaut) | Démonstration jetable, `.data/leadora-demo.json` |
+
+`npm run db:migrate` applique les migrations, `npm run db:reset` recharge le jeu de démonstration (efface tout),
+`npm run db:empty` vide la base, `npm run db:generate` produit une migration après une modification de `schema.ts`.
+En production, le jeu de démonstration n'est jamais chargé (`LEADORA_SEED_DEMO=0` par défaut).
 
 Comptes de démonstration (mot de passe `Leadora2026`, raccourcis sur la page de connexion) :
 
@@ -32,7 +47,7 @@ Réinitialisation : `npm run demo:reset` puis redémarrage.
 
 | Commande | Rôle |
 |---|---|
-| `npm run dev` | Serveur de développement (port 3800) |
+| `npm run dev` | Serveur de développement (port 3300) |
 | `npm run build` / `npm start` | Build et serveur de production |
 | `npm test` | Tests unitaires et de recette (Vitest) |
 | `npm run typecheck` | TypeScript strict |

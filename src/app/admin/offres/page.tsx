@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Offres et quotas" };
 
 export default async function PlansPage() {
   const user = await requireStaffUser("/admin/offres", "plans.configure");
-  const plans = read((s) => {
+  const plans = await read("admin", (s) => {
     requireStaff(s, ctxFor(user.id), "plans.configure");
     return allPlans(s).map((p) => ({ ...p, accounts: s.businesses.filter((b) => b.plan === p.id).length, customized: !!s.settings.planOverrides[p.id] }));
   });

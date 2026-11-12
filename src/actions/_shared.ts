@@ -1,7 +1,7 @@
 import "server-only";
 import type { z } from "zod";
 import { getSession, type SessionUser } from "@/lib/auth/session";
-import { read } from "@/server/db/store";
+import { read, tx, txv, type DbState, type Scope } from "@/server/db/store";
 import { ctxFor, type Ctx } from "@/server/context";
 import { AppError } from "@/server/errors";
 
@@ -28,15 +28,24 @@ export function toFailure(err: unknown): ActionResult<never> {
  * Enveloppe commune des Server Actions privées : 1. session obligatoire ; 2. validation Zod de l'entrée
  * (aucune confiance dans le client) ; 3. le service applique les permissions dans une transaction ; 4. résultat typé.
  */
-export async function authed<S extends z.ZodType, T>(schema: S, raw: unknown, run: (input: z.output<S>, ctx: Ctx, user: SessionUser) => T | Promise<T>): Promise<ActionResult<Awaited<T>>> {
+/** Accès aux données déjà borné à la portée de l'action (l'espace du client connecté, ou toute la plateforme pour l'administration). */
+export interface Db {
+  read<R>(fn: (s: Readonly<DbState>) => R): Promise<R>;
+  tx<R>(fn: (s: DbState) => R): Promise<R>;
+  txv(fn: (s: DbState) => unknown): Promise<void>;
+}
+
+export async function authed<S extends z.ZodType, T>(schema: S, raw: unknown, run: (input: z.output<S>, ctx: Ctx, user: SessionUser, db: Db) => T | Promise<T>, scope?: Scope): Promise<ActionResult<Awaited<T>>> {
   const user = await getSession();
   if (!user) return { ok: false, error: "Votre session a expiré. Reconnectez-vous." };
   const parsed = schema.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "Certains champs sont invalides.", fieldErrors: fieldErrorsOf(parsed.error) };
   // Espace suspendu par un administrateur : plus aucune écriture.
-  if (read((s) => s.businesses.some((b) => b.ownerId === user.id && b.status === "suspended"))) return { ok: false, error: "Votre espace est suspendu. Contactez le support." };
+  if (await read({ account: user.id }, (s) => s.businesses.some((b) => b.ownerId === user.id && b.status === "suspended"))) return { ok: false, error: "Votre espace est suspendu. Contactez le support." };
+  const sc: Scope = scope ?? { user: user.id };
+  const db: Db = { read: (fn) => read(sc, fn), tx: (fn) => tx(sc, fn), txv: (fn) => txv(sc, fn) };
   try {
-    return { ok: true, data: await run(parsed.data, ctxFor(user.id), user) };
+    return { ok: true, data: await run(parsed.data, ctxFor(user.id), user, db) };
   } catch (err) {
     return toFailure(err);
   }

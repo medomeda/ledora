@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Mon Business — Offres et services"
 
 export default async function OffersPage() {
   const user = await requireUser("/business/offers");
-  const business = await guard(() => read((s) => getBusiness(s, ctxFor(user.id))));
+  const business = await guard(() => read({ user: user.id }, (s) => getBusiness(s, ctxFor(user.id))));
   return (
     <Card>
       <CardHeader><div><CardTitle>Offres et services</CardTitle><CardDescription>Ce que vous proposez à vos prospects (jusqu&apos;à 10). L&apos;IA s&apos;en sert pour proposer des appels à l&apos;action pertinents.</CardDescription></div></CardHeader>

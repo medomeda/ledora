@@ -3,6 +3,7 @@ import { rateLimit } from "@/actions/_shared";
 import "@/server/bootstrap";
 import { publicEventSchema } from "@/lib/validations";
 import { AppError } from "@/server/errors";
+import { normalizeEmail } from "@/lib/utils/text";
 import { tx } from "@/server/db/store";
 import * as pub from "@/services/public.service";
 
@@ -40,19 +41,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
   const ev = parsed.data;
   if ((ev.type === "contact" || ev.type === "complete") && !rateLimit(`pub-write:${ip}:${slug}`, 20, 10 * 60_000)) return NextResponse.json({ error: "Trop de tentatives. Réessayez plus tard." }, { status: 429 });
 
+  // Portée minimale : ce quiz, cette session, ce prospect (voir db/store.ts).
+  const contactEmail = ev.type === "contact" || ev.type === "complete" ? ev.contact?.email : undefined;
+  const scope = { slug, session: ev.sessionId, ...(contactEmail ? { email: normalizeEmail(contactEmail) } : {}) };
   try {
     switch (ev.type) {
       case "visit":
-        tx((s) => pub.trackVisit(s, slug, ev.sessionId, ev.utm));
+        await tx(scope, (s) => pub.trackVisit(s, slug, ev.sessionId, ev.utm));
         return NextResponse.json({ ok: true });
       case "start":
-        tx((s) => pub.startQuiz(s, slug, ev.sessionId, ev.utm));
+        await tx(scope, (s) => pub.startQuiz(s, slug, ev.sessionId, ev.utm));
         return NextResponse.json({ ok: true });
       case "contact":
-        tx((s) => pub.saveContact(s, slug, ev.sessionId, ev.contact));
+        await tx(scope, (s) => pub.saveContact(s, slug, ev.sessionId, ev.contact));
         return NextResponse.json({ ok: true });
       case "complete": {
-        const done = tx((s) => pub.completeQuiz(s, slug, ev.sessionId, ev.answers, ev.contact ?? null));
+        const done = await tx(scope, (s) => pub.completeQuiz(s, slug, ev.sessionId, ev.answers, ev.contact ?? null));
         return NextResponse.json(done);
       }
     }

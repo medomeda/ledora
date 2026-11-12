@@ -57,7 +57,7 @@ const jsonLd = {
 export default async function Home() {
   const session = await getSession();
   if (session) redirect(isStaff(session.role) ? "/admin" : "/dashboard");
-  const plans = read((s) => allPlans(s));
+  const plans = await read("settings", (s) => allPlans(s));
   return (
     <div className="min-h-dvh bg-background">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />

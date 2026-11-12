@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Mon Business — Informations" };
 
 export default async function BusinessPage() {
   const user = await requireUser("/business");
-  const business = await guard(() => read((s) => getBusiness(s, ctxFor(user.id))));
+  const business = await guard(() => read({ user: user.id }, (s) => getBusiness(s, ctxFor(user.id))));
   return (
     <Card>
       <CardHeader><div><CardTitle>Informations de l&apos;activité</CardTitle><CardDescription>Qui vous êtes et comment vous contacter.</CardDescription></div></CardHeader>

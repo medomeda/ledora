@@ -24,7 +24,7 @@ export default async function AssistantPage() {
   if (!getFeatures().assistant) notFound();
   const user = await requireUser("/assistant");
   const ctx = ctxFor(user.id);
-  const { usage, history, business } = read((s) => { const b = getBusiness(s, ctx); return { business: b, usage: getUsage(s, b, ctx.now), history: listGenerations(s, ctx, 5) }; });
+  const { usage, history, business } = await read({ user: user.id }, (s) => { const b = getBusiness(s, ctx); return { business: b, usage: getUsage(s, b, ctx.now), history: listGenerations(s, ctx, 5) }; });
   const provider = process.env.AI_PROVIDER ?? "mock";
   return (
     <div className="max-w-3xl space-y-6">

@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Équipe" };
 
 export default async function TeamPage() {
   const user = await requireStaffUser("/admin/equipe", "team.manage");
-  const members = read((s) => listTeam(s, ctxFor(user.id)));
+  const members = await read("admin", (s) => listTeam(s, ctxFor(user.id)));
   return (
     <div>
       <PageHeader title="Équipe" description="Les collaborateurs qui administrent la plateforme, avec le rôle qui limite ce qu'ils peuvent faire." />

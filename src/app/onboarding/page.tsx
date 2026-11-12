@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Configurer mon activité" };
 
 export default async function OnboardingPage() {
   const user = await requireUser("/onboarding");
-  const business = getBusinessOf(user.id);
+  const business = await getBusinessOf(user.id);
   if (!business) redirect("/dashboard");
   return (
     <div className="min-h-dvh bg-background px-4 py-10">

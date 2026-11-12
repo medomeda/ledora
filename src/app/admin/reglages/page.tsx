@@ -20,7 +20,7 @@ const FEATURES: Array<{ key: "ai" | "assistant" | "publications"; label: string;
 
 export default async function SettingsAdminPage() {
   const user = await requireStaffUser("/admin/reglages", "settings.manage");
-  const settings = read((s) => getPlatformSettings(s, ctxFor(user.id)));
+  const settings = await read("admin", (s) => getPlatformSettings(s, ctxFor(user.id)));
   const features = getFeatures();
   return (
     <div className="max-w-3xl space-y-6">

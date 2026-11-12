@@ -28,7 +28,7 @@ export default async function AdminQuizzesPage({ searchParams }: { searchParams:
   const user = await requireStaffUser("/admin/quiz");
   const canModerate = can(user.role, "quiz.moderate");
   const status = (["draft", "published", "archived"] as const).includes(sp.status as QuizStatus) ? (sp.status as QuizStatus) : "";
-  const page = read((s) => listAllQuizzes(s, ctxFor(user.id), { q: sp.q, status, page: Number(sp.page) || 1 }));
+  const page = await read("admin", (s) => listAllQuizzes(s, ctxFor(user.id), { q: sp.q, status, page: Number(sp.page) || 1 }));
   return (
     <div>
       <PageHeader title="Quiz" description="Tous les quiz de la plateforme. Dépubliez ou archivez un quiz en cas de contenu inapproprié ou d'abus." />

@@ -23,7 +23,7 @@ const TONE = { account: "info", quiz: "warning", plan: "ink", settings: "neutral
 export default async function AuditPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
   const user = await requireStaffUser("/admin/journal");
-  const { page, existing } = read((s) => ({ page: listAudit(s, ctxFor(user.id), { q: sp.q, action: sp.type, page: Number(sp.page) || 1 }), existing: new Set(s.businesses.map((b) => b.id)) }));
+  const { page, existing } = await read("admin", (s) => ({ page: listAudit(s, ctxFor(user.id), { q: sp.q, action: sp.type, page: Number(sp.page) || 1 }), existing: new Set(s.businesses.map((b) => b.id)) }));
   return (
     <div>
       <PageHeader title="Journal d'audit" description="Qui a fait quoi, sur quoi et quand. Ce journal n'est pas modifiable." />

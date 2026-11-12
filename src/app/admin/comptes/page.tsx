@@ -29,7 +29,7 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
     sort: sp.sort === "name" || sp.sort === "usage" ? sp.sort : "recent",
     page: Number(sp.page) || 1,
   };
-  const page = read((s) => listAccounts(s, ctxFor(user.id), filters));
+  const page = await read("admin", (s) => listAccounts(s, ctxFor(user.id), filters));
   return (
     <div>
       <PageHeader title="Comptes" description="Les espaces clients de la plateforme : suivez leur activité et agissez sur leur offre ou leur statut." />

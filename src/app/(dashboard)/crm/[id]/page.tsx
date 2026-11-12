@@ -21,7 +21,7 @@ export const dynamic = "force-dynamic";
 export default async function LeadPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser(`/crm/${id}`);
-  const { lead, tags, notes, participations } = await guard(() => read((s) => getLead(s, ctxFor(user.id), id)));
+  const { lead, tags, notes, participations } = await guard(() => read({ user: user.id }, (s) => getLead(s, ctxFor(user.id), id)));
   const name = `${lead.firstName} ${lead.lastName}`.trim();
 
   return (

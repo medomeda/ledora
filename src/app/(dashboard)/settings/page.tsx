@@ -27,7 +27,7 @@ function Meter({ label, used, limit }: { label: string; used: number; limit: num
 export default async function SettingsPage() {
   const user = await requireUser("/settings");
   const ctx = ctxFor(user.id);
-  const { business, usage, quizzes, subs, plan } = read((s) => {
+  const { business, usage, quizzes, subs, plan } = await read({ user: user.id }, (s) => {
     const business = getBusiness(s, ctx);
     const start = new Date(ctx.now.getFullYear(), ctx.now.getMonth(), 1).toISOString();
     return { business, plan: planDef(s, business.plan), usage: getUsage(s, business, ctx.now), quizzes: s.quizzes.filter((q) => q.businessId === business.id && q.status !== "archived").length, subs: s.quizSubmissions.filter((x) => x.businessId === business.id && x.startedAt >= start).length };

@@ -16,7 +16,7 @@ export default async function QuizBuilderPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const user = await requireUser(`/lead-magnets/${id}`);
   const ctx = ctxFor(user.id);
-  const data = await guard(() => read((s) => {
+  const data = await guard(() => read({ user: user.id }, (s) => {
     const quiz = getQuiz(s, ctx, id);
     const business = getBusiness(s, ctx);
     return { quiz, business, participants: s.quizSubmissions.filter((x) => x.quizId === quiz.id && x.status === "completed").length };

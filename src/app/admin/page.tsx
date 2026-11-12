@@ -25,7 +25,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
   const sp = await searchParams;
   const user = await requireStaffUser();
   const ctx = ctxFor(user.id);
-  const o = read((s) => getOverview(s, ctx, resolveRange(s, { range: sp.range, from: sp.from, to: sp.to }, ctx.now)));
+  const o = await read("admin", (s) => getOverview(s, ctx, resolveRange(s, { range: sp.range, from: sp.from, to: sp.to }, ctx.now)));
   const k = o.kpis;
   const unit = o.bucketDays === 1 ? "par jour" : o.bucketDays === 7 ? "par semaine" : "par mois";
   const totalAccounts = Math.max(1, o.plans.reduce((a, p) => a + p.count, 0));

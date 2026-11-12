@@ -27,7 +27,7 @@ export default async function QuizStatsPage({ params, searchParams }: { params: 
   const days = [7, 30, 90].includes(Number(sp.days)) ? Number(sp.days) : 30;
   const user = await requireUser(`/lead-magnets/${id}/stats`);
   const ctx = ctxFor(user.id);
-  const { quiz, stats, versions } = await guard(() => read((s) => ({ quiz: getQuiz(s, ctx, id), stats: getQuizStats(s, ctx, id, days), versions: s.quizVersions.filter((v) => v.quizId === id).length })));
+  const { quiz, stats, versions } = await guard(() => read({ user: user.id }, (s) => ({ quiz: getQuiz(s, ctx, id), stats: getQuizStats(s, ctx, id, days), versions: s.quizVersions.filter((v) => v.quizId === id).length })));
   const f = stats.funnel;
 
   return (

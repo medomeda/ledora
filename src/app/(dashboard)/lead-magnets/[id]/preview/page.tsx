@@ -19,7 +19,7 @@ export default async function QuizPreviewPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const user = await requireUser(`/lead-magnets/${id}/preview`);
   const ctx = ctxFor(user.id);
-  const { quiz, business } = await guard(() => read((s) => ({ quiz: getQuiz(s, ctx, id), business: getBusiness(s, ctx) })));
+  const { quiz, business } = await guard(() => read({ user: user.id }, (s) => ({ quiz: getQuiz(s, ctx, id), business: getBusiness(s, ctx) })));
   return (
     <div>
       <Link href={quiz.status === "archived" ? "/lead-magnets" : `/lead-magnets/${id}`} className="mb-3 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" /> {quiz.status === "archived" ? "Lead Magnets" : "Retour au créateur"}</Link>

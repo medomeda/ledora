@@ -20,7 +20,7 @@ export default async function NewQuizPage({ searchParams }: { searchParams: Prom
   const user = await requireUser("/lead-magnets/new");
   const sp = await searchParams;
   const ctx = ctxFor(user.id);
-  const usage = read((s) => getUsage(s, getBusiness(s, ctx), ctx.now));
+  const usage = await read({ user: user.id }, (s) => getUsage(s, getBusiness(s, ctx), ctx.now));
   const ai = getFeatures().ai && sp.mode === "ai";
   const tab = (active: boolean) => cn("flex flex-1 items-start gap-3 rounded-xl border p-4 text-left transition-colors", active ? "border-primary bg-card ring-1 ring-primary" : "bg-card/60 hover:bg-card");
   return (

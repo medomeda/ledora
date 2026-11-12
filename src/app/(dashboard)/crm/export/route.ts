@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   if (!user) return new NextResponse("Non autorisé", { status: 401 });
   const sp = req.nextUrl.searchParams;
   const status = LEAD_STATUS_ORDER.includes(sp.get("status") as LeadStatus) ? (sp.get("status") as LeadStatus) : undefined;
-  const page = read((s) => listLeads(s, ctxFor(user.id), { q: sp.get("q") ?? undefined, quizId: sp.get("quiz") ?? undefined, profile: sp.get("profile") ?? undefined, status, multiple: sp.get("multiple") === "1", tagId: sp.get("tag") ?? undefined, from: sp.get("from") ?? undefined, to: sp.get("to") ?? undefined, pageSize: 10000 }));
+  const page = await read({ user: user.id }, (s) => listLeads(s, ctxFor(user.id), { q: sp.get("q") ?? undefined, quizId: sp.get("quiz") ?? undefined, profile: sp.get("profile") ?? undefined, status, multiple: sp.get("multiple") === "1", tagId: sp.get("tag") ?? undefined, from: sp.get("from") ?? undefined, to: sp.get("to") ?? undefined, pageSize: 10000 }));
   const header = ["Prénom", "Nom", "Email", "Téléphone", "Statut", "Profil", "Score", "Score max", "Quiz d'origine", "Tags", "Inscrit le"];
   const lines = page.rows.map((l) => [l.firstName, l.lastName, l.email, l.phone, LEAD_STATUS_LABELS[l.status], l.profileName, l.score, l.maxScore, l.originQuizTitle, l.tags.map((t) => t.name).join(" | "), l.createdAt.slice(0, 10)].map(cell).join(","));
   const csv = "﻿" + [header.map(cell).join(","), ...lines].join("\r\n");

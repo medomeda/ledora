@@ -36,11 +36,33 @@ src/
 
 Règle : pas de logique métier dans les composants ; les pages lisent via `read()`, les mutations passent par `tx()`.
 
-## Base simulée (remplace PostgreSQL + Drizzle)
+## Persistance (PostgreSQL + Drizzle)
 
-`server/db/store.ts` expose deux fonctions : `read(fn)` (lecture) et `tx(fn)` (écriture atomique : copie de l'état,
-retour arrière si une erreur est levée). Persistance dans `.data/leadora-demo.json`. Le jour de la bascule, `tx()`
-devient `db.transaction()` et chaque tableau devient une table ; services et écrans ne changent pas.
+**Principe : « unité de travail ».** Les services (`src/services`, ~2 100 lignes de règles métier testées) restent
+des fonctions pures sur un `DbState` en mémoire. `server/db/store.ts` expose `read(scope, fn)` et `tx(scope, fn)`
+(asynchrones) qui : 1. chargent depuis PostgreSQL **uniquement ce que la portée (`Scope`) exige** ; 2. exécutent le
+service ; 3. écrivent **seulement la différence** (suppressions enfants d'abord, puis insertions/mises à jour par
+`INSERT … ON CONFLICT DO UPDATE`), le tout dans une transaction. Aucun service ni écran de règles n'a changé.
+
+| Portée | Charge |
+|---|---|
+| `{ user }` | l'espace du propriétaire et tout son contenu (quiz, versions, visites, participations, prospects, tags, notes, IA) |
+| `{ account }` | l'utilisateur, ses identifiants, sessions, jetons et la fiche de son espace (léger : vérifications de session) |
+| `{ slug, session?, email? }` | un quiz public, **cette** session, **ce** prospect, les participations du mois (quota) |
+| `{ email }` · `{ token }` · `{ session }` | connexion/inscription · réinitialisation · cookie de session |
+| `"admin"` | toute la plateforme, sauf visites et versions (la suppression d'un compte les retire par cascade SQL) |
+| `"settings"` | réglages de la plateforme (landing, inscriptions) |
+
+- **Schéma** : `server/db/schema.ts` (colonnes nommées comme les champs du domaine ; JSONB pour la configuration d'un quiz,
+  les réponses, etc.), migrations versionnées dans `drizzle/` (jouées au démarrage et par `npm run db:migrate`).
+- **Concurrence** : un verrou consultatif PostgreSQL sérialise les écritures (un seul écrivain à la fois) : pas de « mise à jour
+  perdue » ; les lectures s'exécutent en `REPEATABLE READ`. Testé : 60 écritures publiques simultanées, 60 enregistrées.
+- **Unicité** : emails, adresses de quiz et d'espace sont garantis par des index uniques ; `DbState.reserved` évite les
+  collisions lors d'un chargement partiel, et une violation résiduelle devient une erreur « Adresse déjà utilisée ».
+- **Pilotes** (`LEADORA_DB`, `DATABASE_URL`) : PostgreSQL, PGlite (même SQL, embarqué) ou mémoire + JSON (défaut).
+- **Limites connues** : le chargement par espace n'est pas paginé (les pages de statistiques lisent toutes les visites de
+  l'espace) et l'écriture est globalement sérialisée. Prochaines optimisations, sans toucher aux règles : agrégats SQL pour
+  les statistiques, verrou par espace plutôt que global.
 
 ## Décisions
 
@@ -102,10 +124,10 @@ fréquence (connexion, réinitialisation, endpoint public) · redirections inter
 des contenus saisis · neutralisation des formules dans l'export CSV · en-têtes de sécurité · messages d'erreur
 génériques avec code de référence.
 
-## Passage à la persistance (phase suivante)
+## Suite de la feuille de route
 
-1. Schéma Drizzle d'après `types/domain.ts` + migrations ; `tx()`/`read()` branchés sur PostgreSQL.
+1. ✅ Persistance PostgreSQL (voir ci-dessus).
 2. Better Auth à la place de `lib/auth/session.ts` et `services/auth.service.ts` (emails réels).
 3. Fournisseur d'IA réel dans `services/ai/`.
 4. Stockage de fichiers pour logos et couvertures.
-5. Rejouer les suites de tests sur PostgreSQL ; ajouter les tests E2E Playwright.
+5. ✅ Tests d'intégration sur PostgreSQL (PGlite) ; à ajouter : tests E2E Playwright.

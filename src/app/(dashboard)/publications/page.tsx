@@ -17,7 +17,7 @@ export default async function PublicationsPage() {
   if (!getFeatures().publications) notFound();
   const user = await requireUser("/publications");
   const ctx = ctxFor(user.id);
-  const { publications, quizzes } = read((s) => ({ publications: listPublications(s, ctx), quizzes: listQuizzes(s, ctx).filter((q) => q.status !== "archived").map((q) => ({ id: q.id, title: q.title })) }));
+  const { publications, quizzes } = await read({ user: user.id }, (s) => ({ publications: listPublications(s, ctx), quizzes: listQuizzes(s, ctx).filter((q) => q.status !== "archived").map((q) => ({ id: q.id, title: q.title })) }));
   return (
     <div>
       <PageHeader title="Publications" description="Votre calendrier éditorial : planifiez vos contenus et reliez-les à vos quiz." />

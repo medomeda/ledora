@@ -13,7 +13,7 @@ export function uniqueBusinessSlug(s: Readonly<DbState>, base: string): string {
   const root = slugify(base) || "mon-activite";
   let slug = root;
   let i = 2;
-  while (s.businesses.some((b) => b.slug === slug)) slug = `${root}-${i++}`;
+  while (s.businesses.some((b) => b.slug === slug) || s.reserved?.businessSlugs.includes(slug)) slug = `${root}-${i++}`;
   return slug;
 }
 

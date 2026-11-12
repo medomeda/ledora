@@ -9,6 +9,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Pilotes de base de données : chargés tels quels côté serveur (PGlite embarque du WebAssembly).
+  serverExternalPackages: ["postgres", "@electric-sql/pglite"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

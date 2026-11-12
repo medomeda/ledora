@@ -10,7 +10,7 @@ Liens : [PRD](PRD.md) · [Architecture et décisions](ARCHITECTURE.md) · [READM
 **Phase 1 — Application complète sur données simulées : livrée, prête à tester** (`npm run dev`, voir README).
 Les phases fonctionnelles du PRD §16 sont couvertes, **hors Publications et Assistant IA mis au chaud le 12/11/2026** (désactivés par drapeau, code conservé) avec des règles métier et des permissions réelles.
 
-**Phase 2 — Persistance et services réels : à venir** (PostgreSQL, Drizzle, Better Auth, IA réelle, e-mails, stockage de fichiers).
+**Phase 2 — Persistance et services réels : en cours.** ✅ PostgreSQL + Drizzle (12/11/2026). À venir : Better Auth, IA réelle, e-mails, stockage de fichiers, paiement (en attente d'autorisations).
 
 ## 2. Avancement par module du PRD
 
@@ -27,7 +27,7 @@ Les phases fonctionnelles du PRD §16 sont couvertes, **hors Publications et Ass
 | §6.9 Mon Business | ✅ Deux onglets : Informations (`/business`) et Offres et services (`/business/offers`) | ⬜ Stockage du logo |
 | §6.10 Assistant IA | ✅ Dans le workflow de création : génération, ajustements en langage naturel avec suivi et annulation, reformulations ; fournisseur simulé. Le module « Assistant IA » du menu reste au chaud. | ⬜ Modèle de langage réel |
 | §6.11 Publications | ⏸ Au chaud (codé, désactivé) | — |
-| §13 Tests | ✅ 81 tests (dont modules au chaud, séparation business/offres, prospects multi-quiz) (scoring, cycle de vie, versions, participation, CRM, isolation, stats, auth, seed) | ⬜ Tests d'intégration base, E2E Playwright |
+| §13 Tests | ✅ 81 tests (dont modules au chaud, séparation business/offres, prospects multi-quiz) (scoring, cycle de vie, versions, participation, CRM, isolation, stats, auth, seed) | ✅ 11 tests d'intégration sur PostgreSQL (PGlite) · ⬜ E2E Playwright |
 | §15 Plans et quotas | ✅ Structure et application des limites, **modifiables depuis l'administration** | ⬜ Paiement (hors MVP) |
 | Administration | ✅ Vue d'ensemble avec filtre de période, comptes, modération, offres et quotas, journal d'audit, réglages, **équipe avec rôles (Administrateur, Support, Lecture seule)** | ⬜ Envoi réel des invitations, impersonation tracée, facturation |
 
@@ -35,6 +35,7 @@ Les phases fonctionnelles du PRD §16 sont couvertes, **hors Publications et Ass
 
 | Date | Livraison |
 |---|---|
+| 12/11/2026 | **Persistance PostgreSQL + Drizzle.** Schéma de 17 tables + migration initiale ; `read`/`tx` asynchrones par portée (chargement minimal selon le besoin, écriture de la seule différence, transaction, verrou d'écriture, cascade SQL) sans modifier les règles métier ; pilotes PostgreSQL / PGlite / mémoire ; Docker Compose (PostgreSQL 16, port 5440), scripts `db:*`, migrations et jeu de démonstration automatiques au 1er démarrage hors production ; 60 écritures publiques concurrentes sans perte ; données conservées après redémarrage ; parcours complets rejoués sur PostgreSQL (participation, créateur, administration, invitation d'un collaborateur) sans erreur. 92 tests (11 d'intégration sur du SQL réel). Reste : Better Auth, agrégats SQL pour les statistiques, verrou par espace. |
 | 12/11/2026 | **Scintillement du menu : vraie cause trouvée** (enregistrement image par image de la navigation). Le contenu changeait avant la mise en surbrillance du menu, et la transition de couleur de 150 ms allumait brièvement l'ancien ET le nouvel élément. Correctif : l'élément cliqué devient actif immédiatement (`useOptimisticPath`, menus client, administration et onglets) et la transition de couleur des éléments actifs est supprimée. Vérifié sur 8 navigations enchaînées (menu et onglets) : chaque changement passe par exactement deux états, sans retour en arrière ni état vide. |
 | 12/11/2026 | **Fin du scintillement à la navigation.** Cause : les écrans de chargement par segment (`loading.tsx`) remplaçaient toute la page par un squelette quelques millisecondes (5 à 300 ms mesurées) à chaque clic. Ils sont supprimés : l'ancienne page reste affichée jusqu'à ce que la nouvelle soit prête, et l'élément cliqué (menu, onglets, administration) affiche un petit indicateur qui n'apparaît qu'après 200 ms (`NavPending`, `useLinkStatus`). Vérifié par observation du DOM : aucun état intermédiaire vide ou squelette sur 7 navigations enchaînées. |
 | 12/11/2026 | **Mon Business : plus de décalage entre les onglets.** Cause : la page « Informations » (longue) affichait une barre de défilement, pas « Offres et services » (courte), ce qui décalait de ~7 px le contenu centré sur les grands écrans. Correctif global (`scrollbar-gutter: stable`) + squelette de chargement propre à Mon Business (l'en-tête et les onglets ne disparaissent plus pendant le changement d'onglet). Mesuré : position de la carte identique sur les deux onglets (500,5 px avant/après sur 1920 px, contre 500,5 / 508 avant). |
@@ -74,7 +75,8 @@ Recommandation : bandeau de 6 KPI (actifs/total, nouveaux, taux d'activation, pa
 
 ## 5. Limites connues de la phase simulée
 
-- Un seul processus serveur : la base est un fichier JSON, les limiteurs de fréquence sont en mémoire.
+- Les limiteurs de fréquence sont en mémoire (un seul processus) : à passer sur Redis avant un déploiement multi-instances.
+- Mode « mémoire + fichier JSON » : uniquement pour une démonstration jetable (voir README pour PostgreSQL).
 - Les e-mails ne sont pas envoyés (lien de réinitialisation affiché à l'écran).
 - Pas de glisser-déposer pour réordonner : boutons monter / descendre.
-- Les images sont stockées en data URL dans la base simulée.
+- Les images (logo, couvertures) sont stockées en data URL dans la base : à déplacer vers un stockage de fichiers.

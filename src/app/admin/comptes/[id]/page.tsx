@@ -36,7 +36,7 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
   const user = await requireStaffUser(`/admin/comptes/${id}`);
   const ctx = ctxFor(user.id);
   const canDelete = can(user.role, "account.delete");
-  const { d, impact } = await guard(() => read((s) => ({ d: getAccount(s, ctx, id), impact: canDelete ? previewAccountDeletion(s, ctx, id) : { quizzes: 0, submissions: 0, leads: 0 } })));
+  const { d, impact } = await guard(() => read("admin", (s) => ({ d: getAccount(s, ctx, id), impact: canDelete ? previewAccountDeletion(s, ctx, id) : { quizzes: 0, submissions: 0, leads: 0 } })));
   const b = d.business;
   return (
     <div className="space-y-6">

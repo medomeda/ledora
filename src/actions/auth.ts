@@ -8,6 +8,7 @@ import { isStaff } from "@/lib/permissions/staff";
 import { createSession, destroySession, getSession, SESSION_COOKIE } from "@/lib/auth/session";
 import { changePasswordSchema, forgotPasswordSchema, loginSchema, profileSchema, registerSchema, resetPasswordSchema } from "@/lib/validations";
 import { read, tx } from "@/server/db/store";
+import { normalizeEmail } from "@/lib/utils/text";
 import { sha256 } from "@/server/ids";
 import * as auth from "@/services/auth.service";
 import { z } from "zod";
@@ -15,10 +16,10 @@ import { z } from "zod";
 export async function registerAction(raw: unknown): Promise<ActionResult> {
   const parsed = registerSchema.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "Certains champs sont invalides.", fieldErrors: fieldErrorsOf(parsed.error) };
-  if (!read((s) => s.settings.registrationsOpen)) return { ok: false, error: "Les inscriptions sont momentanément fermées." };
+  if (!(await read("settings", (s) => s.settings.registrationsOpen))) return { ok: false, error: "Les inscriptions sont momentanément fermées." };
   let userId: string;
   try {
-    userId = tx((s) => auth.register(s, parsed.data).user.id);
+    userId = await tx({ email: normalizeEmail(parsed.data.email) }, (s) => auth.register(s, parsed.data).user.id);
   } catch (err) {
     return toFailure(err);
   }
@@ -31,7 +32,7 @@ export async function loginAction(raw: unknown): Promise<ActionResult> {
   if (!parsed.success) return { ok: false, error: "Certains champs sont invalides.", fieldErrors: fieldErrorsOf(parsed.error) };
   const limiter = failureLimiter(`login:${parsed.data.email}`, 8, 10 * 60_000);
   if (limiter.blocked()) return { ok: false, error: "Trop de tentatives. Réessayez dans quelques minutes." };
-  const user = read((s) => auth.authenticate(s, parsed.data.email, parsed.data.password));
+  const user = await read({ email: normalizeEmail(parsed.data.email) }, (s) => auth.authenticate(s, parsed.data.email, parsed.data.password));
   if (!user) {
     limiter.fail();
     return { ok: false, error: "Email ou mot de passe incorrect." };
@@ -54,7 +55,7 @@ export async function forgotPasswordAction(raw: unknown): Promise<ActionResult<{
   const limiter = failureLimiter(`reset:${parsed.data.email}`, 5, 15 * 60_000);
   if (limiter.blocked()) return { ok: false, error: "Trop de demandes. Réessayez plus tard." };
   limiter.fail();
-  const token = tx((s) => auth.requestPasswordReset(s, parsed.data.email));
+  const token = await tx({ email: normalizeEmail(parsed.data.email) }, (s) => auth.requestPasswordReset(s, parsed.data.email));
   return { ok: true, data: { link: token ? `/reset-password/${token}` : null } };
 }
 
@@ -62,7 +63,7 @@ export async function resetPasswordAction(raw: unknown): Promise<ActionResult> {
   const parsed = resetPasswordSchema.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "Certains champs sont invalides.", fieldErrors: fieldErrorsOf(parsed.error) };
   try {
-    tx((s) => auth.resetPassword(s, parsed.data.token, parsed.data.password));
+    await tx({ token: sha256(parsed.data.token) }, (s) => auth.resetPassword(s, parsed.data.token, parsed.data.password));
   } catch (err) {
     return toFailure(err);
   }
@@ -71,8 +72,8 @@ export async function resetPasswordAction(raw: unknown): Promise<ActionResult> {
 
 /** Simulation de la vérification d'adresse : confirme directement le compte connecté. */
 export async function confirmEmailAction(): Promise<ActionResult> {
-  return authed(z.object({}), {}, (_i, ctx) => {
-    tx((s) => {
+  return authed(z.object({}), {}, async (_i, ctx, _u, db) => {
+    await db.txv((s) => {
       const u = s.users.find((x) => x.id === ctx.userId);
       if (u) u.emailVerifiedAt = ctx.now.toISOString();
     });
@@ -80,7 +81,7 @@ export async function confirmEmailAction(): Promise<ActionResult> {
 }
 
 export async function updateProfileAction(raw: unknown): Promise<ActionResult> {
-  const res = await authed(profileSchema, raw, (input, ctx) => void tx((s) => auth.updateProfile(s, ctx.userId, input, ctx.now)));
+  const res = await authed(profileSchema, raw, (input, ctx, _u, db) => db.txv((s) => auth.updateProfile(s, ctx.userId, input, ctx.now)));
   if (res.ok) revalidatePath("/", "layout");
   return res;
 }
@@ -92,7 +93,7 @@ export async function changePasswordAction(raw: unknown): Promise<ActionResult> 
   const parsed = changePasswordSchema.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "Certains champs sont invalides.", fieldErrors: fieldErrorsOf(parsed.error) };
   try {
-    tx((s) => auth.changePassword(s, user.id, parsed.data.currentPassword, parsed.data.newPassword, sha256(token)));
+    await tx({ account: user.id }, (s) => auth.changePassword(s, user.id, parsed.data.currentPassword, parsed.data.newPassword, sha256(token)));
     return { ok: true, data: undefined, message: "Mot de passe modifié. Vos autres sessions ont été fermées." };
   } catch (err) {
     return toFailure(err);

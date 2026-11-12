@@ -29,7 +29,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
   const ctx = ctxFor(user.id);
   const status = LEAD_STATUS_ORDER.includes(sp.status as LeadStatus) ? (sp.status as LeadStatus) : undefined;
   const filters = { q: sp.q, quizId: sp.quiz, profile: sp.profile, status, multiple: sp.multiple === "1", tagId: sp.tag, from: sp.from, to: sp.to, page: Number(sp.page) || 1 };
-  const { page, quizzes, profiles, tags, totalLeads } = read((s) => ({ page: listLeads(s, ctx, filters), quizzes: listQuizzes(s, ctx).map((q) => ({ id: q.id, title: q.title })), profiles: listProfileNames(s, ctx), tags: listTags(s, ctx), totalLeads: listLeads(s, ctx, { pageSize: 1 }).total }));
+  const { page, quizzes, profiles, tags, totalLeads } = await read({ user: user.id }, (s) => ({ page: listLeads(s, ctx, filters), quizzes: listQuizzes(s, ctx).map((q) => ({ id: q.id, title: q.title })), profiles: listProfileNames(s, ctx), tags: listTags(s, ctx), totalLeads: listLeads(s, ctx, { pageSize: 1 }).total }));
   const filtered = !!(sp.q || sp.quiz || sp.profile || sp.status || sp.tag || sp.from || sp.to || sp.multiple);
   const pageHref = (p: number) => { const n = new URLSearchParams(Object.entries(sp).filter(([, v]) => v) as [string, string][]); n.set("page", String(p)); return `/crm?${n.toString()}`; };
   const exportHref = `/crm/export?${new URLSearchParams(Object.entries(sp).filter(([k, v]) => v && k !== "page") as [string, string][]).toString()}`;

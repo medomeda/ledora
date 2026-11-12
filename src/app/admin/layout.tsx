@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const user = await requireStaffUser();
   return (
-    <AdminShell user={{ firstName: user.firstName, lastName: user.lastName, email: user.email }} roleLabel={STAFF_ROLE_INFO[user.role as StaffRole].label} permissions={permissionsOf(user.role)} hasWorkspace={!!getBusinessOf(user.id)}>
+    <AdminShell user={{ firstName: user.firstName, lastName: user.lastName, email: user.email }} roleLabel={STAFF_ROLE_INFO[user.role as StaffRole].label} permissions={permissionsOf(user.role)} hasWorkspace={!!(await getBusinessOf(user.id))}>
       {children}
     </AdminShell>
   );

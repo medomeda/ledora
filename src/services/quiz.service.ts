@@ -13,11 +13,18 @@ import type { Business, Quiz, QuizConfig, QuizStatus, QuizVersion } from "@/type
 
 const RESERVED_SLUGS = new Set(["api", "new", "admin"]);
 
+/** Adresse déjà prise : parmi les quiz chargés, ou dans toute la base (`reserved`, quand l'état n'est chargé que partiellement). */
+function quizSlugTaken(s: Readonly<DbState>, slug: string, exceptQuizId?: string): boolean {
+  if (RESERVED_SLUGS.has(slug) || s.quizzes.some((q) => q.slug === slug && q.id !== exceptQuizId)) return true;
+  const own = exceptQuizId ? s.quizzes.find((q) => q.id === exceptQuizId)?.slug : undefined;
+  return !!s.reserved?.quizSlugs.includes(slug) && slug !== own;
+}
+
 export function uniqueQuizSlug(s: Readonly<DbState>, base: string, exceptQuizId?: string): string {
   const root = slugify(base) || "quiz";
   let slug = root;
   let i = 2;
-  while (RESERVED_SLUGS.has(slug) || s.quizzes.some((q) => q.slug === slug && q.id !== exceptQuizId)) slug = `${root}-${i++}`;
+  while (quizSlugTaken(s, slug, exceptQuizId)) slug = `${root}-${i++}`;
   return slug;
 }
 
@@ -163,7 +170,7 @@ export function setQuizSlug(s: DbState, ctx: Ctx, quizId: string, slugRaw: strin
   if (quiz.publishedAt) throw invalidState("L'adresse d'un quiz déjà publié ne peut plus être modifiée.");
   const slug = slugify(slugRaw);
   if (slug.length < 3) throw validation("L'adresse doit contenir au moins 3 caractères.", { slug: "3 caractères minimum." });
-  if (RESERVED_SLUGS.has(slug) || s.quizzes.some((q) => q.slug === slug && q.id !== quiz.id)) throw conflict("Cette adresse est déjà utilisée.", { slug: "Adresse déjà utilisée." });
+  if (quizSlugTaken(s, slug, quiz.id)) throw conflict("Cette adresse est déjà utilisée.", { slug: "Adresse déjà utilisée." });
   quiz.slug = slug;
   quiz.updatedAt = isoNow(ctx);
   return quiz;

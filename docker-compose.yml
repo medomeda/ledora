@@ -1,0 +1,20 @@
+# Base PostgreSQL locale pour le développement : `npm run db:up`
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: leadora
+      POSTGRES_PASSWORD: leadora
+      POSTGRES_DB: leadora
+    ports:
+      - "5440:5432"
+    volumes:
+      - leadora-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U leadora -d leadora"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+volumes:
+  leadora-pg:

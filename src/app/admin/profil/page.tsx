@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Mon profil" };
 
 export default async function AdminProfilePage() {
   const session = await requireStaffUser("/admin/profil");
-  const user = read((s) => s.users.find((u) => u.id === session.id)!);
+  const user = await read({ account: session.id }, (s) => s.users.find((u) => u.id === session.id)!);
   const role = STAFF_ROLE_INFO[user.role as StaffRole];
   return (
     <div className="max-w-3xl space-y-6">
