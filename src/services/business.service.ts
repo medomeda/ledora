@@ -39,6 +39,13 @@ export function updateBusiness(s: DbState, ctx: Ctx, input: BusinessInput): Busi
   return business;
 }
 
+export function updateOffers(s: DbState, ctx: Ctx, offers: string[]): Business {
+  const business = requireBusiness(s, ctx);
+  business.offers = offers.map((o) => stripHtml(o).trim()).filter(Boolean);
+  business.updatedAt = isoNow(ctx);
+  return business;
+}
+
 export function completeOnboarding(s: DbState, ctx: Ctx, input: BusinessInput): Business {
   const business = updateBusiness(s, ctx, input);
   business.onboardingCompletedAt = isoNow(ctx);

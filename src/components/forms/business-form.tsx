@@ -1,8 +1,8 @@
 "use client";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ImagePlus, Plus, Trash2 } from "lucide-react";
+import { ImagePlus } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
-import { useFieldArray, useForm, type Resolver } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 import { completeOnboardingAction, saveBusinessAction, skipOnboardingAction } from "@/actions/business";
@@ -12,18 +12,17 @@ import { Field } from "@/components/ui/field";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { ACTIVITY_LABELS } from "@/lib/constants/labels";
 import { resizeImage } from "@/lib/utils/image-client";
-import { businessSchema, onboardingSchema } from "@/lib/validations";
+import { businessInfoSchema, businessSchema, onboardingSchema } from "@/lib/validations";
 import type { Business } from "@/types/domain";
 
-type Full = z.input<typeof businessSchema>;
+type Full = z.input<typeof businessInfoSchema>;
 
 export function BusinessForm({ business, mode }: { business: Business; mode: "onboarding" | "full" }) {
   const full = mode === "full";
-  const { register, handleSubmit, control, setError, setValue, watch, formState: { errors, isDirty } } = useForm<Full>({
-    resolver: zodResolver(full ? businessSchema : onboardingSchema.extend({ whatsapp: businessSchema.shape.whatsapp.optional(), bookingUrl: businessSchema.shape.bookingUrl.optional(), offers: businessSchema.shape.offers.optional(), logoUrl: businessSchema.shape.logoUrl }) ) as Resolver<Full>,
-    defaultValues: { name: business.name, activityType: business.activityType, industry: business.industry, description: business.description, managerName: business.managerName, contactEmail: business.contactEmail, website: business.website, whatsapp: business.whatsapp, bookingUrl: business.bookingUrl, logoUrl: business.logoUrl, offers: business.offers },
+  const { register, handleSubmit, setError, setValue, watch, formState: { errors, isDirty } } = useForm<Full>({
+    resolver: zodResolver(full ? businessInfoSchema : onboardingSchema.extend({ whatsapp: businessSchema.shape.whatsapp.optional(), bookingUrl: businessSchema.shape.bookingUrl.optional(), logoUrl: businessSchema.shape.logoUrl })) as Resolver<Full>,
+    defaultValues: { name: business.name, activityType: business.activityType, industry: business.industry, description: business.description, managerName: business.managerName, contactEmail: business.contactEmail, website: business.website, whatsapp: business.whatsapp, bookingUrl: business.bookingUrl, logoUrl: business.logoUrl },
   });
-  const offers = useFieldArray({ control: control as never, name: "offers" as never });
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -32,8 +31,7 @@ export function BusinessForm({ business, mode }: { business: Business; mode: "on
   const submit = handleSubmit((values) => {
     setFormError(null);
     start(async () => {
-      const payload = { ...values, offers: (values.offers ?? []).filter((o) => String(o).trim()) };
-      const res = full ? await saveBusinessAction(payload) : await completeOnboardingAction(payload);
+      const res = full ? await saveBusinessAction(values) : await completeOnboardingAction(values);
       if (!res) return;
       if (res.ok) { toast.success("Informations enregistrées."); return; }
       setFormError(res.error);
@@ -81,20 +79,6 @@ export function BusinessForm({ business, mode }: { business: Business; mode: "on
           {logo && <Button type="button" variant="ghost" size="sm" onClick={() => setValue("logoUrl", null, { shouldDirty: true })}>Retirer</Button>}
         </div>
       </Field>
-
-      {full && (
-        <Field label="Offres et services principaux" hint="Jusqu'à 10 offres que vous proposez à vos prospects.">
-          <div className="space-y-2">
-            {offers.fields.map((f, i) => (
-              <div key={f.id} className="flex gap-2">
-                <Input aria-label={`Offre ${i + 1}`} {...register(`offers.${i}` as const)} />
-                <Button type="button" variant="ghost" size="icon" aria-label="Supprimer l'offre" onClick={() => offers.remove(i)}><Trash2 className="size-4" /></Button>
-              </div>
-            ))}
-            {offers.fields.length < 10 && <Button type="button" variant="outline" size="sm" onClick={() => offers.append("" as never)}><Plus /> Ajouter une offre</Button>}
-          </div>
-        </Field>
-      )}
 
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" loading={pending} disabled={full && !isDirty} size={full ? "default" : "lg"}>{full ? "Enregistrer" : "Accéder à mon espace"}</Button>

@@ -40,6 +40,10 @@ export const businessSchema = z.object({
   offers: z.array(required(120)).max(10, "10 offres maximum."),
 });
 
+/** Informations de l'activité (sans les offres, gérées à part). */
+export const businessInfoSchema = businessSchema.omit({ offers: true });
+export const offersSchema = z.object({ offers: businessSchema.shape.offers });
+
 export const onboardingSchema = z.object({
   name: required(80, "Le nom de l'activité est obligatoire."),
   activityType: z.enum(activityTypes),
