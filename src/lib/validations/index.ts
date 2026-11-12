@@ -108,7 +108,32 @@ export const captureSchema = z.object({
   privacyUrl: optionalUrl,
 });
 
+const hexOrNull = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Couleur invalide.").nullable();
+const fontId = z.enum(["instrument", "bricolage", "dm-sans", "space-grotesk", "poppins", "lora", "fraunces", "playfair", "system"]);
+export const quizDesignSchema = z.object({
+  themeId: z.enum(["classique", "sombre", "ocean", "foret", "prune", "epure"]),
+  primaryColor: hexOrNull,
+  accentColor: hexOrNull,
+  backgroundColor: hexOrNull,
+  headingFont: fontId,
+  bodyFont: fontId,
+  titleSize: z.enum(["m", "l", "xl"]),
+  logoPosition: z.enum(["left", "center", "hidden"]),
+  logoSize: z.enum(["s", "m", "l"]),
+  showBrandName: z.boolean(),
+  align: z.enum(["left", "center"]),
+  introLayout: z.enum(["stack", "split", "hero"]),
+  showMeta: z.boolean(),
+  corners: z.enum(["sharp", "rounded", "soft"]),
+  optionStyle: z.enum(["outline", "filled"]),
+  progress: z.enum(["bar", "steps", "none"]),
+  background: z.enum(["plain", "gradient", "dots"]),
+  footerText: text(200),
+  showPoweredBy: z.boolean(),
+});
+
 export const quizConfigSchema = z.object({
+  design: quizDesignSchema.partial().optional(),
   title: text(120),
   description: text(500),
   introduction: text(1500),

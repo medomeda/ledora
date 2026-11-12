@@ -63,9 +63,25 @@ devient `db.transaction()` et chaque tableau devient une table ; services et éc
 Informations → **Profils** (liste ordonnée : nom, description ; l'ordre fixe la priorité en cas d'égalité ; couleur automatique ; mode de calcul
 repliable) → **Questions** (chaque réponse « indique » un profil via une liste déroulante ; résumé « N réponses par profil » avec
 alerte sur un profil jamais indiqué ; points au score global seulement quand il sert : mode « plages » ou score affiché) → **Résultats** (diagnostic, recommandations, bouton d'action, tags ; éditeur visuel des plages en
-mode « plages ») → Capture → Publication. Les profils précèdent les questions car celles-ci y font référence ;
+mode « plages ») → Capture → **Design** → Publication. Les profils précèdent les questions car celles-ci y font référence ;
 leur contenu vient après car il dépend de ce que les questions mesurent. Contrôles d'équilibre :
 `profilePotential` (points possibles par profil), `rangeCoverage` (trous et chevauchements), `validateForPublish`.
+
+## Design du quiz (onglet Design)
+
+`QuizConfig.design` (facultatif, valeurs par défaut dans `lib/quiz/design.ts` : les quiz existants ne changent pas) : thème
+(6 palettes + surcharge de la couleur principale, de l'accent et du fond), polices des titres et du texte (9 choix, chargées à la
+demande), taille des titres, logo (position, taille, nom de marque), alignement, disposition de l'introduction (image
+au-dessus / à côté / en fond), durée et nombre de questions, arrondis, style des cartes de réponses, indicateur de
+progression, fond (uni / dégradé / points), pied de page libre, mention « Propulsé par Leadora » (obligatoire sur l'offre Gratuit).
+Le design suit la configuration : brouillon puis figé dans la version à la publication.
+
+Mise en œuvre : `designStyle()` traduit le design en **variables CSS** posées sur le conteneur du quiz ; la page publique
+utilise les mêmes jetons Tailwind que l'application (`bg-primary`, `text-muted-foreground`, `rounded-xl`, `font-display`…), qui
+sont simplement surchargés : aucun style dupliqué. Le texte et le bouton s'adaptent automatiquement au contraste (`readableOn`,
+fond sombre détecté par luminance). L'aperçu (`PreviewFrame`) réutilise `QuizRunner` en mode `preview` : à droite de l'onglet
+Design il se met à jour à chaque réglage et propose un sélecteur d'écran (parcours, introduction, question, formulaire,
+résultat, avec des données d'exemple) et un basculement ordinateur / mobile.
 
 ## Sécurité en place
 

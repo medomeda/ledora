@@ -9,6 +9,7 @@ import { publishQuizAction, saveQuizAction, setSlugAction, unpublishQuizAction }
 import { AiRefineDialog } from "@/components/quiz/ai-refine-dialog";
 import { useFeatures } from "@/components/layout/features-context";
 import { PreviewFrame } from "@/components/quiz/preview-frame";
+import { DesignStep } from "@/components/quiz/steps/design-step";
 import { CaptureStep } from "@/components/quiz/steps/capture-step";
 import { GeneralStep } from "@/components/quiz/steps/general-step";
 import { ProfilesStep } from "@/components/quiz/steps/profiles-step";
@@ -20,9 +21,9 @@ import { Button } from "@/components/ui/button";
 import { QUIZ_STATUS_LABELS } from "@/lib/constants/labels";
 import { cn } from "@/lib/utils/cn";
 import { validateForPublish } from "@/services/scoring.service";
-import type { QuizConfig, QuizStatus } from "@/types/domain";
+import type { PlanId, QuizConfig, QuizStatus } from "@/types/domain";
 
-export type StepId = "general" | "profiles" | "questions" | "results" | "capture" | "publish";
+export type StepId = "general" | "profiles" | "questions" | "results" | "capture" | "design" | "publish";
 
 export interface QuizMeta {
   id: string;
@@ -39,6 +40,8 @@ export interface StepProps {
   goTo: (s: StepId) => void;
   quiz: QuizMeta;
   bookingUrl: string;
+  plan: PlanId;
+  hasLogo: boolean;
 }
 
 const STEPS: Array<{ id: StepId; label: string; issueStep?: string[] }> = [
@@ -47,12 +50,13 @@ const STEPS: Array<{ id: StepId; label: string; issueStep?: string[] }> = [
   { id: "questions", label: "Questions", issueStep: ["questions"] },
   { id: "results", label: "Résultats", issueStep: ["result"] },
   { id: "capture", label: "Capture", issueStep: ["capture"] },
+  { id: "design", label: "Design" },
   { id: "publish", label: "Publication" },
 ];
 
 type SaveState = "saved" | "dirty" | "saving" | "error";
 
-export function QuizBuilder({ initialConfig, initialMeta, brand, bookingUrl }: { initialConfig: QuizConfig; initialMeta: QuizMeta; brand: { name: string; logoUrl: string | null }; bookingUrl: string }) {
+export function QuizBuilder({ initialConfig, initialMeta, brand, bookingUrl, plan }: { initialConfig: QuizConfig; initialMeta: QuizMeta; brand: { name: string; logoUrl: string | null }; bookingUrl: string; plan: PlanId }) {
   const router = useRouter();
   const [config, setConfig] = useState(initialConfig);
   const [meta, setMeta] = useState(initialMeta);
@@ -151,7 +155,7 @@ export function QuizBuilder({ initialConfig, initialMeta, brand, bookingUrl }: {
     router.refresh();
   };
 
-  const props: StepProps = { config, update, goTo: setStep, quiz: meta, bookingUrl };
+  const props: StepProps = { config, update, goTo: setStep, quiz: meta, bookingUrl, plan, hasLogo: !!brand.logoUrl };
   const issueCount = (ids?: string[]) => (ids ? issues.filter((i) => ids.includes(i.step)).length : 0);
 
   const status =
@@ -198,6 +202,15 @@ export function QuizBuilder({ initialConfig, initialMeta, brand, bookingUrl }: {
         </ol>
       </nav>
 
+      {step === "design" ? (
+        /* Onglet Design : réglages à gauche, aperçu en direct à droite (il suit chaque modification). */
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]">
+          <DesignStep {...props} />
+          <div className="lg:sticky lg:top-32 lg:h-[calc(100dvh-9rem)] lg:self-start">
+            <PreviewFrame config={config} brand={brand} plan={plan} screens fill defaultScreen="intro" className="h-full" />
+          </div>
+        </div>
+      ) : (
       <div className="max-w-3xl">
         {step === "general" && <GeneralStep {...props} />}
         {step === "profiles" && <ProfilesStep {...props} />}
@@ -206,8 +219,9 @@ export function QuizBuilder({ initialConfig, initialMeta, brand, bookingUrl }: {
         {step === "capture" && <CaptureStep {...props} />}
         {step === "publish" && <PublishStep {...props} issues={issues} slug={slug} onSlugChange={(v) => { setSlug(v); setSlugError(null); }} slugError={slugError} onPublish={publish} onUnpublish={unpublish} busy={publishing || saveState === "saving"} dirty={saveState !== "saved"} />}
       </div>
+      )}
 
-      <div className="mt-8 flex max-w-3xl justify-between border-t pt-5">
+      <div className={cn("mt-8 flex justify-between border-t pt-5", step !== "design" && "max-w-3xl")}>
         <Button variant="ghost" disabled={step === "general"} onClick={() => setStep(STEPS[Math.max(0, STEPS.findIndex((s) => s.id === step) - 1)]!.id)}><ArrowLeft /> Précédent</Button>
         {step !== "publish" && <Button variant="outline" onClick={() => setStep(STEPS[STEPS.findIndex((s) => s.id === step) + 1]!.id)}>Étape suivante</Button>}
       </div>
@@ -220,7 +234,7 @@ export function QuizBuilder({ initialConfig, initialMeta, brand, bookingUrl }: {
           <DialogPrimitive.Content className="fixed inset-2 z-50 flex flex-col rounded-xl border bg-card p-4 shadow-xl sm:inset-6">
             <div className="mb-3 flex items-center justify-between"><DialogPrimitive.Title className="font-display text-lg font-semibold">Aperçu du quiz</DialogPrimitive.Title><DialogPrimitive.Close className="rounded-md p-1.5 text-muted-foreground hover:bg-muted" aria-label="Fermer l'aperçu"><X className="size-5" /></DialogPrimitive.Close></div>
             <DialogPrimitive.Description className="sr-only">Aperçu fidèle de l&apos;expérience participant avec vos modifications actuelles.</DialogPrimitive.Description>
-            <PreviewFrame config={config} brand={brand} className="min-h-0 flex-1" />
+            <PreviewFrame config={config} brand={brand} plan={plan} screens className="min-h-0 flex-1" />
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>
       </DialogPrimitive.Root>

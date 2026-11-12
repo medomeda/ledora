@@ -97,6 +97,8 @@ function seed(s: DbState) {
   entre.title = "Quel type d'entrepreneur êtes-vous ?";
   entre.capture.required = false;
   entre.capture.askPhone = true;
+  // Un quiz au design personnalisé, pour la démonstration (onglet Design).
+  entre.design = { themeId: "ocean", headingFont: "fraunces", align: "center", corners: "soft", optionStyle: "filled", progress: "steps", background: "gradient", footerText: "Aïcha Diallo Coaching — vos réponses restent confidentielles." };
   const quiz2 = createQuiz(s, ctxAt(ago(30)), { title: entre.title, config: entre });
   quiz2.slug = "type-entrepreneur";
   publishQuiz(s, ctxAt(ago(28)), quiz2.id);

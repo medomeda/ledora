@@ -21,19 +21,20 @@ Les phases fonctionnelles du PRD §16 sont couvertes, **hors Publications et Ass
 | §6.3 Dashboard | ✅ KPI, évolution, derniers leads, top quiz, activité, état vide | — |
 | §6.4 Lead Magnets | ✅ Quiz ; formulaires et PDF annoncés (« Bientôt ») | ⬜ Formulaires, PDF (V2) |
 | §6.5 Créateur de quiz | ✅ 5 étapes, scoring profil/plage, aperçu, publication versionnée, autosave | — |
-| §6.6 Expérience publique | ✅ Une question à la fois, reprise de session, consentement, UTM | ⬜ Anti-fraude renforcé (captcha) |
+| §6.6 Expérience publique | ✅ Une question à la fois, reprise de session, consentement, UTM, **design personnalisable** | ⬜ Anti-fraude renforcé (captcha) |
 | §6.7 CRM | ✅ Doublons, historique, tags (auto et manuels), notes, statuts, filtres, export CSV, effacement | — |
 | §6.8 Statistiques | ✅ Par quiz et globales, sources, profils, scores | — |
 | §6.9 Mon Business | ✅ Deux onglets : Informations (`/business`) et Offres et services (`/business/offers`) | ⬜ Stockage du logo |
 | §6.10 Assistant IA | ✅ Dans le workflow de création : génération, ajustements en langage naturel avec suivi et annulation, reformulations ; fournisseur simulé. Le module « Assistant IA » du menu reste au chaud. | ⬜ Modèle de langage réel |
 | §6.11 Publications | ⏸ Au chaud (codé, désactivé) | — |
-| §13 Tests | ✅ 55 tests (dont modules au chaud, séparation business/offres, prospects multi-quiz) (scoring, cycle de vie, versions, participation, CRM, isolation, stats, auth, seed) | ⬜ Tests d'intégration base, E2E Playwright |
+| §13 Tests | ✅ 62 tests (dont modules au chaud, séparation business/offres, prospects multi-quiz) (scoring, cycle de vie, versions, participation, CRM, isolation, stats, auth, seed) | ⬜ Tests d'intégration base, E2E Playwright |
 | §15 Plans et quotas | ✅ Structure et application des limites | ⬜ Paiement (hors MVP) |
 
 ## 3. Journal des livraisons
 
 | Date | Livraison |
 |---|---|
+| 12/11/2026 | **Onglet Design du quiz + aperçu en direct.** Thèmes (6) et couleurs personnalisables, polices (9), taille des titres, logo (position, taille, nom), alignement, dispositions d'introduction (image au-dessus / à côté / en fond), durée et nombre de questions, arrondis, style des réponses, progression (barre / étapes / masquée), fond (uni / dégradé / points), pied de page libre, mention « Propulsé par Leadora » (obligatoire sur l'offre Gratuit, retirable au-dessus). Aperçu à droite mis à jour en temps réel, avec sélecteur d'écran (introduction, question, formulaire, résultat) et appareil (ordinateur / mobile), aussi disponible dans le créateur et la page d'aperçu. Quiz existants inchangés (valeurs par défaut) ; design figé avec la version publiée ; un quiz de démonstration au design personnalisé (`/q/type-entrepreneur`). 62 tests. |
 | 12/11/2026 | **Assistance IA remise dans la création de quiz** (le module du menu reste au chaud, drapeau `LEADORA_FEATURE_ASSISTANT`). Création manuelle OU générée par IA ; sur une proposition comme sur un brouillon existant, ajustements demandés en langage naturel (« Ajoute une question sur l'épargne », « Réduis à 5 questions », « Renomme le profil… », « Ton plus dynamique »…) : l'IA propose une liste de changements, l'utilisateur applique, peut annuler ; suivi des ajustements dans l'écran de génération ; création du brouillon à partir de la proposition ajustée. Fournisseur simulé reconnaissant ces formulations. 55 tests. |
 | 12/11/2026 | **Profils et scoring : refonte ergonomique.** Profils = liste ordonnée simple (nom + phrase ; l'ordre remplace le champ « priorité » ; couleur automatique ; mode de calcul replié par défaut). Réponses : une liste déroulante « Indique : <profil> » à côté du texte de la réponse (remplace les pastilles et la pondération) ; résumé « N réponses par profil » avec alerte rouge sur un profil jamais indiqué (remplace la barre « points possibles »). Le modèle de données n'a pas changé ; la pondération reste possible dans les données. |
 | 12/11/2026 | **Questions simplifiées** : description, choix multiple et « obligatoire » masqués dans l'éditeur (interrupteur `SHOW_ADVANCED_QUESTION_FIELDS` dans `questions-step.tsx`) ; moteur, page publique et données inchangés, donc réactivables sans migration. Toute question créée reste à choix unique et obligatoire. |

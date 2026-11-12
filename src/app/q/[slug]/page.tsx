@@ -20,9 +20,6 @@ export default async function PublicQuizPage({ params }: { params: Promise<{ slu
   const pq = read((s) => getPublicQuiz(s, slug));
   if (!pq) notFound();
   return (
-    <div className="min-h-dvh bg-background">
-      <QuizRunner config={pq.config} brand={{ name: pq.brand.name, logoUrl: pq.brand.logoUrl }} slug={pq.slug} mode="public" />
-      <p className="pb-8 text-center text-xs text-muted-foreground">Propulsé par Leadora</p>
-    </div>
+    <QuizRunner config={pq.config} brand={{ name: pq.brand.name, logoUrl: pq.brand.logoUrl }} slug={pq.slug} mode="public" plan={pq.plan} />
   );
 }

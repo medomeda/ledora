@@ -24,7 +24,7 @@ export default async function QuizPreviewPage({ params }: { params: Promise<{ id
     <div>
       <Link href={quiz.status === "archived" ? "/lead-magnets" : `/lead-magnets/${id}`} className="mb-3 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" /> {quiz.status === "archived" ? "Lead Magnets" : "Retour au créateur"}</Link>
       <div className="mb-5 flex flex-wrap items-center gap-3"><h1 className="font-display text-2xl font-semibold">Aperçu : {quiz.config.title}</h1><Badge tone={quiz.status === "published" ? "success" : "neutral"}>{QUIZ_STATUS_LABELS[quiz.status]}</Badge></div>
-      <PreviewFrame config={quiz.config} brand={{ name: business.name, logoUrl: business.logoUrl }} />
+      <PreviewFrame config={quiz.config} brand={{ name: business.name, logoUrl: business.logoUrl }} plan={business.plan} screens />
     </div>
   );
 }

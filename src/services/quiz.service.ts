@@ -119,6 +119,7 @@ export function sanitizeConfig(config: QuizConfig): QuizConfig {
   clean.capture.message = t(clean.capture.message);
   clean.capture.consentLabel = t(clean.capture.consentLabel);
   if (!clean.capture.askPhone) clean.capture.phoneRequired = false;
+  if (clean.design?.footerText !== undefined) clean.design.footerText = t(clean.design.footerText);
   const profileIds = new Set(clean.profiles.map((p) => p.id));
   for (const q of clean.questions) {
     q.title = t(q.title);
@@ -284,6 +285,8 @@ export interface PublicQuiz {
   slug: string;
   config: QuizConfig;
   brand: { name: string; logoUrl: string | null; website: string };
+  /** Offre du créateur : détermine par exemple si la mention « Propulsé par Leadora » peut être retirée. */
+  plan: Business["plan"];
 }
 
 /** Quiz accessible au public : publié, jamais archivé. Retourne la VERSION figée, pas le brouillon. */
@@ -293,5 +296,5 @@ export function getPublicQuiz(s: Readonly<DbState>, slug: string): PublicQuiz | 
   const version = s.quizVersions.find((v) => v.id === quiz.publishedVersionId);
   const business = s.businesses.find((b) => b.id === quiz.businessId);
   if (!version || !business) return null;
-  return { quizId: quiz.id, businessId: business.id, versionId: version.id, slug: quiz.slug, config: version.config, brand: { name: business.name, logoUrl: business.logoUrl, website: business.website } };
+  return { quizId: quiz.id, businessId: business.id, versionId: version.id, slug: quiz.slug, config: version.config, brand: { name: business.name, logoUrl: business.logoUrl, website: business.website }, plan: business.plan };
 }

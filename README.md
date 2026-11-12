@@ -1,7 +1,7 @@
 # Leadora — Quiz marketing et qualification de prospects
 
 Plateforme SaaS pour créer des quiz de diagnostic, collecter des prospects et les qualifier : créateur de quiz en
-6 étapes avec assistance IA, pages publiques, CRM et statistiques.
+7 étapes avec assistance IA et design personnalisable, pages publiques, CRM et statistiques.
 
 > **Phase actuelle : application complète sur données simulées côté serveur.**
 > Règles métier, permissions et validations sont réelles et testées ; seules la persistance (PostgreSQL + Drizzle),
@@ -22,7 +22,7 @@ Comptes de démonstration (mot de passe `Leadora2026`, raccourcis sur la page de
 | `demo@leadora.app` | Espace complet : 4 quiz (2 publiés, 1 brouillon, 1 archivé), ~100 prospects, statistiques sur 35 jours |
 | `nouveau@leadora.app` | Espace vide : onboarding, états vides, premier quiz à créer |
 
-Quiz publics de démonstration : `/q/maturite-financiere` et `/q/type-entrepreneur`.
+Quiz publics de démonstration : `/q/maturite-financiere` (design par défaut) et `/q/type-entrepreneur` (design personnalisé : thème Océan, titres en Fraunces, centré).
 Les données sont relatives à la date du jour, persistées dans `.data/leadora-demo.json`.
 Réinitialisation : `npm run demo:reset` puis redémarrage.
 

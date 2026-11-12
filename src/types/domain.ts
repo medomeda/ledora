@@ -109,7 +109,33 @@ export interface CaptureConfig {
   privacyUrl: string;
 }
 
+/** Apparence de la page publique du quiz. Tous les champs ont une valeur par défaut (voir lib/quiz/design.ts). */
+export interface QuizDesign {
+  themeId: "classique" | "sombre" | "ocean" | "foret" | "prune" | "epure";
+  /** Surcharges facultatives (#rrggbb) de la palette du thème. */
+  primaryColor: string | null;
+  accentColor: string | null;
+  backgroundColor: string | null;
+  headingFont: "instrument" | "bricolage" | "dm-sans" | "space-grotesk" | "poppins" | "lora" | "fraunces" | "playfair" | "system";
+  bodyFont: "instrument" | "bricolage" | "dm-sans" | "space-grotesk" | "poppins" | "lora" | "fraunces" | "playfair" | "system";
+  titleSize: "m" | "l" | "xl";
+  logoPosition: "left" | "center" | "hidden";
+  logoSize: "s" | "m" | "l";
+  showBrandName: boolean;
+  align: "left" | "center";
+  introLayout: "stack" | "split" | "hero";
+  showMeta: boolean;
+  corners: "sharp" | "rounded" | "soft";
+  optionStyle: "outline" | "filled";
+  progress: "bar" | "steps" | "none";
+  background: "plain" | "gradient" | "dots";
+  footerText: string;
+  showPoweredBy: boolean;
+}
+
 export interface QuizConfig {
+  /** Absent sur les quiz créés avant l'onglet Design : les valeurs par défaut s'appliquent. */
+  design?: Partial<QuizDesign>;
   title: string;
   description: string;
   introduction: string;

@@ -1,11 +1,13 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- les images du quiz sont des data URL redimensionnées côté navigateur */
 import { ArrowLeft, ArrowRight, Check, Clock, ExternalLink, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LogoMark } from "@/components/layout/brand";
 import { Alert } from "@/components/ui/feedback";
 import { cn } from "@/lib/utils/cn";
-import { buildResultView, computeResult, ScoringError, type ResultView } from "@/services/scoring.service";
-import type { QuizConfig } from "@/types/domain";
+import { designStyle, LOGO_PX, resolveDesign, shouldShowPoweredBy, TITLE_CLASS } from "@/lib/quiz/design";
+import { buildResultView, computeResult, quizMaxScore, ScoringError, type ResultView } from "@/services/scoring.service";
+import type { PlanId, QuizConfig } from "@/types/domain";
 
 /**
  * Expérience du participant (PRD §6.6). Un composant, deux modes :
@@ -16,6 +18,9 @@ export interface Brand {
   name: string;
   logoUrl: string | null;
 }
+
+/** Écrans que l'aperçu du créateur peut afficher directement, sans parcourir le quiz. */
+export type PreviewScreen = "intro" | "question" | "capture" | "result";
 
 type Step = "intro" | "capture-before" | "question" | "capture-after" | "loading" | "result";
 interface Contact {
@@ -51,17 +56,27 @@ async function api<T>(slug: string, body: Record<string, unknown>): Promise<{ ok
   }
 }
 
-export function QuizRunner({ config, brand, slug, mode }: { config: QuizConfig; brand: Brand; slug?: string; mode: "public" | "preview" }) {
+export function QuizRunner({ config, brand, slug, mode, plan = "free", previewScreen }: { config: QuizConfig; brand: Brand; slug?: string; mode: "public" | "preview"; plan?: PlanId; previewScreen?: PreviewScreen }) {
   const storageKey = mode === "public" && slug ? `leadora:${slug}` : null;
-  const [step, setStep] = useState<Step>("intro");
-  const [index, setIndex] = useState(0);
+  const [stepRaw, setStep] = useState<Step>("intro");
+  const [indexRaw, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [contact, setContact] = useState<Contact>(EMPTY_CONTACT);
   const [contactSaved, setContactSaved] = useState(false);
-  const [result, setResult] = useState<ResultView | null>(null);
+  const [resultRaw, setResult] = useState<ResultView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  // Aperçu d'un écran précis (créateur) : on affiche cet écran avec des données d'exemple, sans toucher à l'état du parcours.
+  const screen = mode === "preview" ? previewScreen : undefined;
+  const sampleResult = useMemo(() => {
+    const max = quizMaxScore(config);
+    return buildResultView(config, { profileId: config.profiles[0]?.id ?? null, totalScore: Math.round(max * 0.72), maxScore: max });
+  }, [config]);
+  const step: Step = screen ? (screen === "capture" ? (config.capture.position === "before" ? "capture-before" : "capture-after") : screen) : stepRaw;
+  const index = screen ? 0 : indexRaw;
+  const result = screen === "result" ? sampleResult : resultRaw;
+  const design = resolveDesign(config.design);
   const sessionRef = useRef<string>("");
   const topRef = useRef<HTMLDivElement>(null);
 
@@ -187,51 +202,95 @@ export function QuizRunner({ config, brand, slug, mode }: { config: QuizConfig; 
   const progress = step === "intro" ? 0 : step === "question" ? (index + (answers[q?.id ?? ""]?.length ? 1 : 0.4)) / (questions.length + (cap.position === "after" ? 1 : 0)) : 1;
   const total = useMemo(() => questions.length, [questions.length]);
 
-  return (
-    <div className="mx-auto flex min-h-full w-full max-w-xl flex-col px-5 pb-10 pt-6 sm:pt-10">
-      <div ref={topRef} />
-      <header className="mb-8 flex items-center gap-3">
-        {brand.logoUrl ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={brand.logoUrl} alt="" className="size-9 rounded-lg object-contain" /> : <LogoMark className="size-9" />}
-        <span className="font-display text-lg font-semibold">{brand.name}</span>
-      </header>
+  const center = design.align === "center";
+  const wide = step === "intro" && design.introLayout === "split" && !!config.coverImage;
+  const logoPx = LOGO_PX[design.logoSize];
+  const showLogoBlock = design.logoPosition !== "hidden";
+  const filled = design.optionStyle === "filled";
 
-      {step !== "intro" && step !== "result" && step !== "loading" && (
+  return (
+    <div className={cn("flex w-full flex-col", mode === "public" ? "min-h-dvh" : "min-h-full")} style={designStyle(design)}>
+    <div className={cn("mx-auto flex w-full flex-1 flex-col px-5 pb-10 pt-6 sm:pt-10", wide ? "max-w-4xl" : "max-w-xl")}>
+      <div ref={topRef} />
+      {showLogoBlock && (
+        <header className={cn("mb-8 flex items-center gap-3", design.logoPosition === "center" && "flex-col justify-center gap-2 text-center")}>
+          {brand.logoUrl ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={brand.logoUrl} alt="" style={{ height: logoPx, maxWidth: logoPx * 4 }} className="w-auto object-contain" /> : <LogoMark className="shrink-0" />}
+          {design.showBrandName && <span className="font-display text-lg font-semibold">{brand.name}</span>}
+        </header>
+      )}
+
+      {step !== "intro" && step !== "result" && step !== "loading" && design.progress !== "none" && (
         <div className="mb-8" aria-live="polite">
           <div className="mb-2 flex justify-between text-xs text-muted-foreground">
             <span>{step === "question" ? `Question ${index + 1} sur ${total}` : "Dernière étape"}</span>
             <span>{Math.round(progress * 100)} %</span>
           </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100}><div className="h-full rounded-full bg-accent transition-[width] duration-300" style={{ width: `${progress * 100}%` }} /></div>
+          {design.progress === "bar" ? (
+            <div className="h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100}><div className="h-full rounded-full bg-accent transition-[width] duration-300" style={{ width: `${progress * 100}%` }} /></div>
+          ) : (
+            <div className="flex gap-1.5" role="progressbar" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100}>
+              {Array.from({ length: total + (cap.position === "after" ? 1 : 0) }).map((_, i) => <span key={i} className={cn("h-1.5 flex-1 rounded-full transition-colors", step === "question" ? (i <= index ? "bg-accent" : "bg-muted") : "bg-accent")} />)}
+            </div>
+          )}
         </div>
       )}
 
       {error && step !== "loading" && <Alert tone="error" className="mb-5">{error}</Alert>}
 
-      {step === "intro" && (
-        <section className="animate-pop-in">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          {config.coverImage && <img src={config.coverImage} alt="" className="mb-6 max-h-52 w-full rounded-2xl object-cover" />}
-          <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">{config.title}</h1>
-          {config.description && <p className="mt-3 text-lg text-muted-foreground">{config.description}</p>}
-          {config.introduction && <p className="mt-5 whitespace-pre-line leading-relaxed">{config.introduction}</p>}
-          <p className="mt-6 flex items-center gap-2 text-sm text-muted-foreground"><Clock className="size-4" /> Environ {config.estimatedMinutes} minute{config.estimatedMinutes > 1 ? "s" : ""} · {total} question{total > 1 ? "s" : ""}</p>
-          <button onClick={begin} disabled={busy || total === 0} className="mt-8 inline-flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-60 sm:w-auto">
-            {busy && <Loader2 className="size-4 animate-spin" />}{config.startLabel || "Commencer le diagnostic"} <ArrowRight className="size-4" />
-          </button>
-        </section>
-      )}
+      {step === "intro" && (() => {
+        const hero = design.introLayout === "hero" && !!config.coverImage;
+        const split = design.introLayout === "split" && !!config.coverImage;
+        const textAlign = hero || center ? "text-center" : "text-left";
+        const body = (
+          <div className={cn(textAlign, hero && "relative px-6 py-14 text-white sm:px-10 sm:py-20")}>
+            <h1 className={cn("font-display font-semibold leading-tight", TITLE_CLASS[design.titleSize])}>{config.title}</h1>
+            {config.description && <p className={cn("mt-3 text-lg", hero ? "text-white/85" : "text-muted-foreground")}>{config.description}</p>}
+            {config.introduction && <p className="mt-5 whitespace-pre-line leading-relaxed">{config.introduction}</p>}
+            {design.showMeta && <p className={cn("mt-6 flex items-center gap-2 text-sm", hero ? "text-white/80" : "text-muted-foreground", (center || hero) && "justify-center")}><Clock className="size-4" /> Environ {config.estimatedMinutes} minute{config.estimatedMinutes > 1 ? "s" : ""} · {total} question{total > 1 ? "s" : ""}</p>}
+            <button onClick={begin} disabled={busy || total === 0} className={cn("mt-8 inline-flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-60 sm:w-auto", hero && "bg-accent text-[#111827] hover:brightness-95")}>
+              {busy && <Loader2 className="size-4 animate-spin" />}{config.startLabel || "Commencer le diagnostic"} <ArrowRight className="size-4" />
+            </button>
+          </div>
+        );
+        if (hero) {
+          return (
+            <section className="animate-pop-in relative overflow-hidden rounded-2xl">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={config.coverImage!} alt="" className="absolute inset-0 size-full object-cover" />
+              <div className="absolute inset-0 bg-black/55" />
+              {body}
+            </section>
+          );
+        }
+        if (split) {
+          return (
+            <section className="animate-pop-in grid items-center gap-8 md:grid-cols-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={config.coverImage!} alt="" className="max-h-96 w-full rounded-2xl object-cover" />
+              {body}
+            </section>
+          );
+        }
+        return (
+          <section className="animate-pop-in">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {config.coverImage && <img src={config.coverImage} alt="" className="mb-6 max-h-52 w-full rounded-2xl object-cover" />}
+            {body}
+          </section>
+        );
+      })()}
 
       {step === "question" && q && (
         <section key={q.id} className="animate-pop-in">
           <fieldset>
-            <legend className="font-display text-2xl font-semibold leading-snug sm:text-3xl">{q.title}</legend>
-            {q.description && <p className="mt-2 text-muted-foreground">{q.description}</p>}
-            {q.type === "multiple" && <p className="mt-2 text-sm text-muted-foreground">Plusieurs réponses possibles.</p>}
+            <legend className={cn("font-display text-2xl font-semibold leading-snug sm:text-3xl", center && "w-full text-center")}>{q.title}</legend>
+            {q.description && <p className={cn("mt-2 text-muted-foreground", center && "text-center")}>{q.description}</p>}
+            {q.type === "multiple" && <p className={cn("mt-2 text-sm text-muted-foreground", center && "text-center")}>Plusieurs réponses possibles.</p>}
             <div className="mt-6 space-y-3">
               {q.options.map((o) => {
                 const checked = (answers[q.id] ?? []).includes(o.id);
                 return (
-                  <label key={o.id} className={cn("flex cursor-pointer items-center gap-4 rounded-xl border bg-card px-4 py-4 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring", checked ? "border-primary bg-primary/[0.04] ring-1 ring-primary" : "hover:border-primary/40")}>
+                  <label key={o.id} className={cn("flex cursor-pointer items-center gap-4 rounded-xl border px-4 py-4 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring", filled ? "border-transparent bg-muted" : "bg-card", checked ? "border-primary bg-primary/[0.06] ring-1 ring-primary" : "hover:border-primary/40")}>
                     <input type={q.type === "single" ? "radio" : "checkbox"} name={q.id} checked={checked} onChange={() => select(o.id)} className="sr-only" />
                     <span className={cn("flex size-6 shrink-0 items-center justify-center border-2", q.type === "single" ? "rounded-full" : "rounded-md", checked ? "border-primary bg-primary text-primary-foreground" : "border-input")}>{checked && <Check className="size-3.5" />}</span>
                     <span><span className="block leading-snug">{o.label}</span>{o.description && <span className="mt-0.5 block text-sm text-muted-foreground">{o.description}</span>}</span>
@@ -249,8 +308,8 @@ export function QuizRunner({ config, brand, slug, mode }: { config: QuizConfig; 
 
       {(step === "capture-before" || step === "capture-after") && (
         <form onSubmit={submitContact} className="animate-pop-in space-y-4" noValidate>
-          <h2 className="font-display text-2xl font-semibold leading-snug sm:text-3xl">{cap.title || "Vos coordonnées"}</h2>
-          {cap.message && <p className="text-muted-foreground">{cap.message}</p>}
+          <h2 className={cn("font-display text-2xl font-semibold leading-snug sm:text-3xl", center && "text-center")}>{cap.title || "Vos coordonnées"}</h2>
+          {cap.message && <p className={cn("text-muted-foreground", center && "text-center")}>{cap.message}</p>}
           <div className={cn("grid gap-4", cap.askLastName && "sm:grid-cols-2")}>
             <PublicField label="Prénom" error={fieldErrors.firstName}><input autoComplete="given-name" value={contact.firstName} onChange={(e) => setContact({ ...contact, firstName: e.target.value })} className={inputCls(!!fieldErrors.firstName)} /></PublicField>
             {cap.askLastName && <PublicField label="Nom" optional><input autoComplete="family-name" value={contact.lastName} onChange={(e) => setContact({ ...contact, lastName: e.target.value })} className={inputCls(false)} /></PublicField>}
@@ -280,7 +339,14 @@ export function QuizRunner({ config, brand, slug, mode }: { config: QuizConfig; 
         </div>
       )}
 
-      {step === "result" && result && <ResultPage result={result} />}
+      {step === "result" && result && <ResultPage result={result} center={center} titleClass={TITLE_CLASS[design.titleSize]} />}
+    </div>
+    {(design.footerText || shouldShowPoweredBy(design, plan)) && (
+      <footer className="px-5 pb-8 text-center text-xs text-muted-foreground">
+        {design.footerText && <p className="mx-auto max-w-xl whitespace-pre-line">{design.footerText}</p>}
+        {shouldShowPoweredBy(design, plan) && <p className={design.footerText ? "mt-2" : ""}>Propulsé par Leadora</p>}
+      </footer>
+    )}
     </div>
   );
 }
@@ -297,14 +363,14 @@ function PublicField({ label, error, optional, children }: { label: string; erro
   );
 }
 
-function ResultPage({ result }: { result: ResultView }) {
+function ResultPage({ result, center, titleClass }: { result: ResultView; center: boolean; titleClass: string }) {
   const p = result.profile;
   const percent = result.maxScore > 0 ? Math.round((result.totalScore / result.maxScore) * 100) : 0;
   return (
     <section className="animate-pop-in space-y-8">
-      <div>
+      <div className={center ? "text-center" : undefined}>
         {p && <p className="mb-3 inline-flex rounded-full bg-accent-soft px-3 py-1 text-sm font-medium text-accent-soft-foreground">Votre profil</p>}
-        <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">{result.title}</h1>
+        <h1 className={cn("font-display font-semibold leading-tight", titleClass)}>{result.title}</h1>
         {p?.description && <p className="mt-2 text-lg text-muted-foreground">{p.description}</p>}
       </div>
       {result.showScore && (

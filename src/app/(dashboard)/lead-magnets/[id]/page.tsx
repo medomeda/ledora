@@ -29,6 +29,7 @@ export default async function QuizBuilderPage({ params }: { params: Promise<{ id
       initialMeta={{ id: quiz.id, slug: quiz.slug, status: quiz.status, hasUnpublishedChanges: quiz.hasUnpublishedChanges, publishedAt: quiz.publishedAt, participants: data.participants }}
       brand={{ name: business.name, logoUrl: business.logoUrl }}
       bookingUrl={business.bookingUrl}
+      plan={business.plan}
     />
   );
 }
