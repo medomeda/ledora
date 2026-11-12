@@ -168,6 +168,8 @@ export interface ParticipationView {
   submissionId: string;
   quizId: string;
   quizTitle: string;
+  /** Objectif du quiz (champ « objectif » du créateur), lu dans la version à laquelle le participant a répondu. */
+  objective: string;
   versionNumber: number | null;
   status: string;
   totalScore: number;
@@ -186,7 +188,24 @@ export interface ParticipationView {
   answers: Array<{ question: string; choices: string[]; score: number }>;
 }
 
+/** Une ligne par quiz auquel le prospect a participé : vue d'ensemble de la fiche. */
+export interface QuizSummary {
+  quizId: string;
+  quizTitle: string;
+  objective: string;
+  participations: number;
+  profileName: string | null;
+  totalScore: number | null;
+  maxScore: number | null;
+  /** Score (en % du maximum) de la participation précédente terminée, pour montrer l'évolution. */
+  previousPercent: number | null;
+  currentPercent: number | null;
+  lastAt: string;
+  completed: boolean;
+}
+
 export interface LeadDetail {
+  quizSummaries: QuizSummary[];
   lead: Lead;
   tags: Array<{ id: string; name: string; color: string }>;
   notes: LeadNote[];
@@ -198,8 +217,11 @@ export function getLead(s: Readonly<DbState>, ctx: Ctx, leadId: string): LeadDet
   const lead = s.leads.find((l) => l.id === leadId);
   if (!canManageLead(business, lead)) throw notFound("Prospect introuvable.");
   const participations: ParticipationView[] = s.quizSubmissions
-    .filter((x) => x.leadId === lead.id)
-    .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
+    .map((x, order) => ({ x, order }))
+    .filter(({ x }) => x.leadId === lead.id)
+    // Plus récente d'abord ; à horodatage égal, la dernière enregistrée l'emporte (ordre d'insertion).
+    .sort((a, b) => b.x.startedAt.localeCompare(a.x.startedAt) || b.order - a.order)
+    .map(({ x }) => x)
     .map((x) => {
       const version = s.quizVersions.find((v) => v.id === x.versionId);
       const config: QuizConfig | undefined = version?.config;
@@ -208,6 +230,7 @@ export function getLead(s: Readonly<DbState>, ctx: Ctx, leadId: string): LeadDet
         submissionId: x.id,
         quizId: x.quizId,
         quizTitle: config?.title ?? quizTitle(s, x.quizId) ?? "Quiz supprimé",
+        objective: config?.objective ?? "",
         versionNumber: version?.version ?? null,
         status: x.status,
         totalScore: x.totalScore,
@@ -229,8 +252,22 @@ export function getLead(s: Readonly<DbState>, ctx: Ctx, leadId: string): LeadDet
       };
     });
   const tagIds = s.leadTags.filter((lt) => lt.leadId === lead.id).map((lt) => lt.tagId);
+  const quizSummaries: QuizSummary[] = [];
+  for (const p of participations) {
+    if (quizSummaries.some((q) => q.quizId === p.quizId)) continue; // participations triées de la plus récente à la plus ancienne
+    const same = participations.filter((x) => x.quizId === p.quizId);
+    const done = same.filter((x) => x.status === "completed");
+    const latest = done[0];
+    const percent = (x?: ParticipationView) => (x && x.maxScore > 0 ? Math.round((x.totalScore / x.maxScore) * 100) : null);
+    quizSummaries.push({
+      quizId: p.quizId, quizTitle: p.quizTitle, objective: same.find((x) => x.objective)?.objective ?? "", participations: same.length,
+      profileName: latest?.profileName ?? null, totalScore: latest?.totalScore ?? null, maxScore: latest?.maxScore ?? null,
+      currentPercent: percent(latest), previousPercent: percent(done[1]), lastAt: (latest?.completedAt ?? p.startedAt), completed: !!latest,
+    });
+  }
   return {
     lead,
+    quizSummaries,
     tags: s.tags.filter((t) => tagIds.includes(t.id)).map((t) => ({ id: t.id, name: t.name, color: t.color })),
     notes: s.leadNotes.filter((n) => n.leadId === lead.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     participations,

@@ -4,7 +4,7 @@ import { register } from "@/services/auth.service";
 import { getDashboard, getQuizStats } from "@/services/analytics.service";
 import { addLeadTag, addNote, deleteLead, deleteNote, getLead, listLeads, listTags, removeLeadTag, updateLeadStatus } from "@/services/lead.service";
 import { completeQuiz, startQuiz, trackVisit } from "@/services/public.service";
-import { createQuiz, publishQuiz } from "@/services/quiz.service";
+import { createQuiz, publishQuiz, saveQuizConfig } from "@/services/quiz.service";
 import { answersFor, contact, publishedQuiz, sampleConfig } from "@/tests/helpers";
 
 function participate(w: ReturnType<typeof publishedQuiz>, session: string, email: string, idx = 0, consent = true) {
@@ -104,6 +104,33 @@ describe("CRM", () => {
     expect(w.s.leadSubmissions).toHaveLength(0);
     expect(w.s.quizSubmissions).toHaveLength(1);
     expect(w.s.quizSubmissions[0]!.leadId).toBeNull();
+  });
+});
+
+describe("fiche prospect : plusieurs quiz", () => {
+  it("résume le prospect par quiz, avec l'objectif et l'évolution entre deux participations", () => {
+    const w = publishedQuiz();
+    const cfg = structuredClone(w.quiz.config);
+    cfg.objective = "Qualifier la maturité financière";
+    saveQuizConfig(w.s, w.ctx, w.quiz.id, cfg);
+    publishQuiz(w.s, w.ctx, w.quiz.id);
+    const second = createQuiz(w.s, w.ctx, { title: "Quiz business", config: { ...sampleConfig(4), objective: "Évaluer la préparation à l'entrepreneuriat" } });
+    publishQuiz(w.s, w.ctx, second.id);
+
+    const run = (slug: string, session: string, quiz: typeof w.quiz, idx: number) => { startQuiz(w.s, slug, session, {}); return completeQuiz(w.s, slug, session, answersFor(quiz.config, idx), contact("multi@example.com")); };
+    run(w.quiz.slug, "session-multi-0001", w.quiz, 2);
+    run(second.slug, "session-multi-0002", second, 1);
+    const q1 = w.s.quizzes.find((q) => q.id === w.quiz.id)!;
+    run(q1.slug, "session-multi-0003", q1, 0); // refait le premier quiz, meilleur score
+
+    expect(w.s.leads).toHaveLength(1);
+    const d = getLead(w.s, w.ctx, w.s.leads[0]!.id);
+    expect(d.participations).toHaveLength(3);
+    expect(d.quizSummaries).toHaveLength(2);
+    const fin = d.quizSummaries.find((q) => q.quizId === w.quiz.id)!;
+    expect(fin).toMatchObject({ participations: 2, objective: "Qualifier la maturité financière" });
+    expect(fin.currentPercent!).toBeGreaterThan(fin.previousPercent!);
+    expect(d.quizSummaries.find((q) => q.quizId === second.id)).toMatchObject({ participations: 1, objective: "Évaluer la préparation à l'entrepreneuriat", previousPercent: null });
   });
 });
 
