@@ -51,7 +51,7 @@ async function api<T>(slug: string, body: Record<string, unknown>): Promise<{ ok
   }
 }
 
-export function QuizRunner({ config, brand, slug, mode, resetKey }: { config: QuizConfig; brand: Brand; slug?: string; mode: "public" | "preview"; resetKey?: number }) {
+export function QuizRunner({ config, brand, slug, mode }: { config: QuizConfig; brand: Brand; slug?: string; mode: "public" | "preview" }) {
   const storageKey = mode === "public" && slug ? `leadora:${slug}` : null;
   const [step, setStep] = useState<Step>("intro");
   const [index, setIndex] = useState(0);
@@ -69,7 +69,8 @@ export function QuizRunner({ config, brand, slug, mode, resetKey }: { config: Qu
   const q = questions[index];
   const cap = config.capture;
 
-  // Initialisation : identifiant de session, reprise de la progression, visite.
+  // Initialisation : identifiant de session, reprise de la progression (sessionStorage, indisponible au rendu serveur), visite.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (mode === "preview") return;
     let sid = "";
@@ -86,12 +87,7 @@ export function QuizRunner({ config, brand, slug, mode, resetKey }: { config: Qu
     const p = new URLSearchParams(window.location.search);
     void api(slug!, { type: "visit", sessionId: sid, utm: { source: p.get("utm_source"), medium: p.get("utm_medium"), campaign: p.get("utm_campaign"), referrer: document.referrer || null } });
   }, [mode, slug, storageKey]);
-
-  // Aperçu : « Recommencer ».
-  useEffect(() => {
-    if (mode !== "preview" || resetKey === undefined) return;
-    setStep("intro"); setIndex(0); setAnswers({}); setContact(EMPTY_CONTACT); setContactSaved(false); setResult(null); setError(null); setFieldErrors({});
-  }, [resetKey, mode]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Sauvegarde de la progression pendant la session (PRD §6.6).
   useEffect(() => {

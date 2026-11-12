@@ -5,7 +5,7 @@ import { MockAiProvider } from "@/services/ai/mock-provider";
 import { ctxFor } from "@/server/context";
 import { registerSeeder, type DbState } from "@/server/db/store";
 import { addLeadTag, addNote, updateLeadStatus } from "@/services/lead.service";
-import { completeQuiz, saveContact, startQuiz, trackVisit } from "@/services/public.service";
+import { completeQuiz, startQuiz, trackVisit } from "@/services/public.service";
 import { createQuiz, publishQuiz, saveQuizConfig, archiveQuiz } from "@/services/quiz.service";
 import { savePublication } from "@/services/publication.service";
 import type { LeadStatus, QuizConfig } from "@/types/domain";

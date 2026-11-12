@@ -125,7 +125,9 @@ export class MockAiProvider implements AiProvider {
 
   /** Version synchrone (utilisée aussi par le jeu de démonstration). */
   buildQuiz(input: GenerateQuizInput): QuizConfig {
-    const domain = pickDomain(`${input.brief} ${input.business.industry} ${input.business.description}`);
+    // Le brief prime ; le contexte de l'activité ne sert qu'en secours quand le brief ne désigne aucun thème.
+    const fromBrief = pickDomain(`${input.brief} ${input.target}`);
+    const domain = fromBrief !== GENERIC ? fromBrief : pickDomain(`${input.business.industry} ${input.business.description}`);
     const brand = input.business.name || "votre coach";
     const config = blankConfig({ category: domain.category });
     const target = input.target.trim();

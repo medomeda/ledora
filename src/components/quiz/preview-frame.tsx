@@ -22,7 +22,7 @@ export function PreviewFrame({ config, brand, className }: { config: QuizConfig;
       <div className="min-h-0 flex-1 overflow-auto rounded-xl border bg-muted p-3 sm:p-6">
         <div className={cn("mx-auto overflow-hidden bg-background shadow-lg transition-[width] duration-300", device === "mobile" ? "w-[390px] max-w-full rounded-[2rem] border-[10px] border-primary" : "w-full max-w-4xl rounded-xl border")} style={{ minHeight: device === "mobile" ? 640 : 520 }}>
           <div className={cn("overflow-y-auto", device === "mobile" ? "h-[620px]" : "max-h-[70dvh] min-h-[500px]")}>
-            <QuizRunner config={config} brand={brand} mode="preview" resetKey={key} />
+            <QuizRunner key={key} config={config} brand={brand} mode="preview" />
           </div>
         </div>
       </div>

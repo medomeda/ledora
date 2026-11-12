@@ -1,6 +1,5 @@
 "use client";
 import { ArrowDown, ArrowUp, ChevronDown, Copy, Plus, Trash2 } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
 import { ImproveButton } from "@/components/quiz/improve-button";
 import type { StepProps } from "@/components/quiz/quiz-builder";

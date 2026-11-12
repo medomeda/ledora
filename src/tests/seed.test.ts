@@ -38,3 +38,14 @@ describe("jeu de démonstration", () => {
     expect(getDashboard(s, ctxFor(empty.id)).hasActivity).toBe(false);
   });
 });
+
+describe("thèmes de l'IA simulée", () => {
+  it("choisit le thème d'après le brief, pas d'après l'activité", async () => {
+    const { MockAiProvider } = await import("@/services/ai/mock-provider");
+    const ctx = { name: "Coach", activityType: "coaching", industry: "Coaching financier", description: "argent, budget, épargne", offers: [], bookingUrl: "" };
+    const ent = new MockAiProvider().buildQuiz({ brief: "Évaluer la préparation des futurs entrepreneurs avant de lancer leur activité", target: "", tone: "dynamique", questionCount: 5, business: ctx });
+    expect(ent.profiles[0]!.name).toContain("Entrepreneur");
+    const lead = new MockAiProvider().buildQuiz({ brief: "Profil de leadership des managers", target: "", tone: "expert", questionCount: 4, business: ctx });
+    expect(lead.profiles[0]!.name).toContain("Leader");
+  });
+});
