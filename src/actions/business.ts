@@ -16,7 +16,7 @@ export async function saveBusinessAction(raw: unknown): Promise<ActionResult> {
 
 export async function saveOffersAction(raw: unknown): Promise<ActionResult> {
   const res = await authed(offersSchema, raw, (input, ctx) => void tx((s) => business.updateOffers(s, ctx, input.offers)));
-  if (res.ok) revalidatePath("/business");
+  if (res.ok) revalidatePath("/business/offers");
   return res;
 }
 

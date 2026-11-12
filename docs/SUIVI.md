@@ -24,7 +24,7 @@ Les phases fonctionnelles du PRD §16 sont couvertes, **hors Publications et Ass
 | §6.6 Expérience publique | ✅ Une question à la fois, reprise de session, consentement, UTM | ⬜ Anti-fraude renforcé (captcha) |
 | §6.7 CRM | ✅ Doublons, historique, tags (auto et manuels), notes, statuts, filtres, export CSV, effacement | — |
 | §6.8 Statistiques | ✅ Par quiz et globales, sources, profils, scores | — |
-| §6.9 Mon Business | ✅ Informations et offres/services en sections séparées | ⬜ Stockage du logo |
+| §6.9 Mon Business | ✅ Deux onglets : Informations (`/business`) et Offres et services (`/business/offers`) | ⬜ Stockage du logo |
 | §6.10 Assistant IA | ⏸ Au chaud (codé, testé, désactivé) | ⬜ Modèle de langage réel si réactivé |
 | §6.11 Publications | ⏸ Au chaud (codé, désactivé) | — |
 | §13 Tests | ✅ 48 tests (dont modules au chaud et séparation business/offres) (scoring, cycle de vie, versions, participation, CRM, isolation, stats, auth, seed) | ⬜ Tests d'intégration base, E2E Playwright |
@@ -34,6 +34,7 @@ Les phases fonctionnelles du PRD §16 sont couvertes, **hors Publications et Ass
 
 | Date | Livraison |
 |---|---|
+| 12/11/2026 | **Mon Business en deux onglets** (`/business`, `/business/offers`), chacun avec sa propre adresse (composant `TabNav`, réutilisable pour les Paramètres). Avant : deux cartes sur une page. |
 | 12/11/2026 | **Mon Business : informations de l'activité et offres/services séparées** en deux cartes avec leurs propres formulaires, schémas de validation, actions et enregistrements (modifier l'un ne touche pas l'autre). |
 | 12/11/2026 | **Publications et Assistant IA mis au chaud** (hors objectif de la plateforme). Drapeaux `LEADORA_FEATURE_PUBLICATIONS` / `LEADORA_FEATURE_AI` (désactivés par défaut) : menu, pages, actions, boutons d'amélioration IA, onglet IA de création, quota IA des paramètres, publications de démonstration, textes d'aide associés. Code et tests conservés. 45 tests. |
 | 12/11/2026 | **Phase 1 complète sur données simulées.** Socle (domaine, base simulée avec transactions, services testés), design system, authentification, dashboard, créateur de quiz, page publique et endpoint public, CRM, statistiques, Assistant IA, publications, paramètres. Jeu de démonstration produit en rejouant les vrais services. Vérifié : typecheck, 43 tests, build de production, parcours public → CRM → export CSV via HTTP. **Non vérifié** : rendu visuel dans un navigateur (aucun navigateur piloté dans cet environnement) — à contrôler lors de la première session de test. |
