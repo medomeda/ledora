@@ -35,6 +35,7 @@ Les phases fonctionnelles du PRD §16 sont couvertes, **hors Publications et Ass
 
 | Date | Livraison |
 |---|---|
+| 12/11/2026 | **Landing page de conversion** : démo jouable, cas d'usage, fonctionnalités, tarifs (lus depuis les offres, modifiables en administration), FAQ ; SEO : métadonnées, canonical, Open Graph + image générée, JSON-LD (Organization, SoftwareApplication, FAQPage), `sitemap.xml`, `robots.txt`. Variable `NEXT_PUBLIC_SITE_URL`. |
 | 12/11/2026 | **Profil de l'administration** (`/admin/profil`, accessible depuis le bloc utilisateur du menu) : identité, rôle et liste de ses permissions, ancienneté et dernière connexion, modification du nom, changement de mot de passe (les autres sessions sont fermées). Formulaires partagés avec l'espace client. |
 | 12/11/2026 | **Équipe d'administration + filtre de période.** L'administrateur invite des collaborateurs (lien d'invitation 7 jours), choisit leur rôle — Administrateur (tout), Support (aide clients, modération), Lecture seule — change le rôle, désactive l'accès ou retire ; permissions appliquées dans les services et reflétées dans le menu et les boutons ; garde-fous (dernier administrateur, soi-même). Le tableau de bord admin se filtre sur 7, 30, 90 jours, tout l'historique ou une période personnalisée, avec comparaison à la période précédente. Le bouton « promouvoir administrateur » sur la fiche compte est supprimé (un client n'est pas un collaborateur). 81 tests. |
 | 12/11/2026 | **Module d'administration du SaaS** (`/admin`, rôle `admin`) : vue d'ensemble (KPI, croissance, offres, comptes à surveiller), comptes (recherche/filtres, fiche, usage vs quotas, changement d'offre, suspension avec motif, réactivation, confirmation d'email, lien de réinitialisation, révocation de sessions, rôle admin, suppression en cascade avec confirmation), modération des quiz, offres et quotas éditables (prix affiché sur la landing), journal d'audit, réglages (inscriptions, annonce globale). Contrôle d'accès dans les services, audit transactionnel, suspension appliquée (espace, actions, quiz publics). Compte `admin@leadora.app` et ~12 comptes clients de démonstration. 74 tests. |
@@ -56,7 +57,16 @@ Les phases fonctionnelles du PRD §16 sont couvertes, **hors Publications et Ass
 - Durée de conservation des données et procédure de demande de suppression côté participant (aujourd'hui : suppression par le créateur).
 - Captcha ou équivalent sur le formulaire de capture pour les volumes réels.
 
-- Landing page de conversion : démo jouable, cas d'usage, fonctionnalités, tarifs (lus depuis `PLANS`), FAQ ; SEO : métadonnées, canonical, Open Graph + image générée, JSON-LD (Organization, SoftwareApplication, FAQPage), `sitemap.xml`, `robots.txt`. Variable `NEXT_PUBLIC_SITE_URL`. Prix Starter/Pro non figés : affichés « Bientôt ».
+## 4 bis. Backlog (à reprendre)
+
+**Indicateurs proposés pour la vue d'ensemble admin** (non réalisés, à choisir) :
+1. Activation : entonnoir inscrits → onboarding → 1er quiz créé → publié → 1re participation → 1er prospect ; taux d'activation à 7 jours ; délai médian d'activation.
+2. Engagement : comptes actifs / total ; comptes dormants (liste de relance) ; rétention par cohorte d'inscription.
+3. Monétisation : opportunités d'upsell (comptes gratuits ≥ 80 % du quota) ; conversion gratuit → payant ; MRR estimé (exige des prix numériques).
+4. Valeur délivrée : complétion globale, taux de capture, visite → démarrage, sources de trafic agrégées, top 5 quiz, top 5 comptes (concentration du volume).
+5. IA : générations, part des comptes utilisateurs, taux d'échec.
+6. Risque : emails non confirmés, invitations en attente, suspensions, quiz modérés ; connexions échouées et erreurs serveur (à stocker).
+Recommandation : bandeau de 6 KPI (actifs/total, nouveaux, taux d'activation, participations, complétion, upsell) + entonnoir d'activation + trois listes d'actions (dormants, quota, risque).
 
 ## 5. Limites connues de la phase simulée
 
