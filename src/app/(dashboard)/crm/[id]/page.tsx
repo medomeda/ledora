@@ -21,7 +21,7 @@ export const dynamic = "force-dynamic";
 export default async function LeadPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser(`/crm/${id}`);
-  const { lead, tags, notes, participations, quizSummaries } = await guard(() => read((s) => getLead(s, ctxFor(user.id), id)));
+  const { lead, tags, notes, participations } = await guard(() => read((s) => getLead(s, ctxFor(user.id), id)));
   const name = `${lead.firstName} ${lead.lastName}`.trim();
 
   return (
@@ -43,48 +43,12 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <div className="space-y-6">
-          {quizSummaries.length > 0 && (
-            <section aria-labelledby="synth">
-              <h2 id="synth" className="mb-3 font-display text-lg font-semibold">Vue d&apos;ensemble par quiz</h2>
-              <Card className="divide-y">
-                {quizSummaries.map((q) => (
-                  <div key={q.quizId} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-5 py-4">
-                    <div className="min-w-0 flex-1 basis-64">
-                      <Link href={`/lead-magnets/${q.quizId}/stats`} className="font-medium hover:underline">{q.quizTitle}</Link>
-                      {q.objective && <p className="mt-0.5 text-sm text-muted-foreground">Objectif : {q.objective}</p>}
-                      <p className="mt-0.5 text-xs text-muted-foreground">{q.participations > 1 ? `${q.participations} participations · ` : ""}{q.completed ? `dernière le ${fmtDate(q.lastAt)}` : "non terminé"}</p>
-                    </div>
-                    {q.completed ? (
-                      <div className="flex items-center gap-3">
-                        {q.profileName && <Badge tone="info">{q.profileName}</Badge>}
-                        <div className="text-right"><p className="font-display text-lg font-semibold tabular-nums">{q.totalScore}<span className="text-sm text-muted-foreground">/{q.maxScore}</span></p>
-                          {q.previousPercent !== null && q.currentPercent !== null && <p className="text-xs text-muted-foreground">{q.currentPercent >= q.previousPercent ? "+" : "−"}{Math.abs(q.currentPercent - q.previousPercent)} pts vs précédente</p>}</div>
-                      </div>
-                    ) : <Badge>Incomplète</Badge>}
-                  </div>
-                ))}
-              </Card>
-            </section>
-          )}
-
           <section aria-labelledby="hist">
-            <h2 id="hist" className="mb-3 font-display text-lg font-semibold">Participations ({participations.length})</h2>
+            <h2 id="hist" className="mb-1 font-display text-lg font-semibold">Participations ({participations.length})</h2>
+            {new Set(participations.map((p) => p.quizId)).size > 1 && <p className="mb-3 text-sm text-muted-foreground">Ce prospect a participé à {new Set(participations.map((p) => p.quizId)).size} quiz différents.</p>}
+            {new Set(participations.map((p) => p.quizId)).size <= 1 && <div className="mb-3" />}
             <div className="space-y-4">
-              {quizSummaries.map((q) => {
-                const group = participations.filter((p) => p.quizId === q.quizId);
-                const [latest, ...older] = group;
-                return (
-                  <div key={q.quizId} className="space-y-2">
-                    <ParticipationCard p={latest!} />
-                    {older.length > 0 && (
-                      <details className="rounded-xl border bg-card">
-                        <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium hover:bg-muted/50">{older.length} participation{older.length > 1 ? "s" : ""} précédente{older.length > 1 ? "s" : ""} à « {q.quizTitle} »</summary>
-                        <div className="space-y-3 border-t p-3">{older.map((p) => <ParticipationCard key={p.submissionId} p={p} />)}</div>
-                      </details>
-                    )}
-                  </div>
-                );
-              })}
+              {participations.map((p) => <ParticipationCard key={p.submissionId} p={p} />)}
             </div>
           </section>
         </div>

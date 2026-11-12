@@ -67,6 +67,8 @@ export interface LeadFilters {
   quizId?: string;
   profile?: string;
   status?: LeadStatus;
+  /** Prospects ayant participé à plusieurs quiz (ou plusieurs fois). */
+  multiple?: boolean;
   tagId?: string;
   from?: string;
   to?: string;
@@ -133,6 +135,7 @@ export function listLeads(s: Readonly<DbState>, ctx: Ctx, f: LeadFilters = {}): 
   let rows = s.leads.filter((l) => l.businessId === business.id);
   if (q) rows = rows.filter((l) => `${l.firstName} ${l.lastName} ${l.email}`.toLowerCase().includes(q));
   if (f.status) rows = rows.filter((l) => l.status === f.status);
+  if (f.multiple) rows = rows.filter((l) => s.quizSubmissions.filter((x) => x.leadId === l.id).length > 1);
   if (f.tagId) rows = rows.filter((l) => s.leadTags.some((lt) => lt.leadId === l.id && lt.tagId === f.tagId));
   if (f.from) rows = rows.filter((l) => l.createdAt >= `${f.from}T00:00:00`);
   if (f.to) rows = rows.filter((l) => l.createdAt <= `${f.to}T23:59:59.999`);
@@ -188,24 +191,7 @@ export interface ParticipationView {
   answers: Array<{ question: string; choices: string[]; score: number }>;
 }
 
-/** Une ligne par quiz auquel le prospect a participé : vue d'ensemble de la fiche. */
-export interface QuizSummary {
-  quizId: string;
-  quizTitle: string;
-  objective: string;
-  participations: number;
-  profileName: string | null;
-  totalScore: number | null;
-  maxScore: number | null;
-  /** Score (en % du maximum) de la participation précédente terminée, pour montrer l'évolution. */
-  previousPercent: number | null;
-  currentPercent: number | null;
-  lastAt: string;
-  completed: boolean;
-}
-
 export interface LeadDetail {
-  quizSummaries: QuizSummary[];
   lead: Lead;
   tags: Array<{ id: string; name: string; color: string }>;
   notes: LeadNote[];
@@ -252,22 +238,8 @@ export function getLead(s: Readonly<DbState>, ctx: Ctx, leadId: string): LeadDet
       };
     });
   const tagIds = s.leadTags.filter((lt) => lt.leadId === lead.id).map((lt) => lt.tagId);
-  const quizSummaries: QuizSummary[] = [];
-  for (const p of participations) {
-    if (quizSummaries.some((q) => q.quizId === p.quizId)) continue; // participations triées de la plus récente à la plus ancienne
-    const same = participations.filter((x) => x.quizId === p.quizId);
-    const done = same.filter((x) => x.status === "completed");
-    const latest = done[0];
-    const percent = (x?: ParticipationView) => (x && x.maxScore > 0 ? Math.round((x.totalScore / x.maxScore) * 100) : null);
-    quizSummaries.push({
-      quizId: p.quizId, quizTitle: p.quizTitle, objective: same.find((x) => x.objective)?.objective ?? "", participations: same.length,
-      profileName: latest?.profileName ?? null, totalScore: latest?.totalScore ?? null, maxScore: latest?.maxScore ?? null,
-      currentPercent: percent(latest), previousPercent: percent(done[1]), lastAt: (latest?.completedAt ?? p.startedAt), completed: !!latest,
-    });
-  }
   return {
     lead,
-    quizSummaries,
     tags: s.tags.filter((t) => tagIds.includes(t.id)).map((t) => ({ id: t.id, name: t.name, color: t.color })),
     notes: s.leadNotes.filter((n) => n.leadId === lead.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     participations,

@@ -23,7 +23,7 @@ export function LeadFilters({ quizzes, profiles, tags }: { quizzes: Array<{ id: 
     next.delete("page");
     router.replace(`${pathname}?${next.toString()}`);
   };
-  const active = ["q", "quiz", "profile", "status", "tag", "from", "to"].some((k) => sp.get(k));
+  const active = ["q", "quiz", "profile", "status", "tag", "from", "to", "multiple"].some((k) => sp.get(k));
 
   return (
     <div className="space-y-3">
@@ -39,6 +39,7 @@ export function LeadFilters({ quizzes, profiles, tags }: { quizzes: Array<{ id: 
         <Input type="date" aria-label="Inscrit depuis le" value={sp.get("from") ?? ""} onChange={(e) => set("from", e.target.value)} />
         <Input type="date" aria-label="Inscrit jusqu'au" value={sp.get("to") ?? ""} onChange={(e) => set("to", e.target.value)} />
       </div>
+      <label className="flex w-fit items-center gap-2 text-sm"><input type="checkbox" checked={sp.get("multiple") === "1"} onChange={(e) => set("multiple", e.target.checked ? "1" : "")} className="size-4 accent-[var(--primary)]" /> Plusieurs participations seulement</label>
       {active && <Button variant="ghost" size="sm" onClick={() => router.replace(pathname)}><X /> Réinitialiser les filtres</Button>}
     </div>
   );

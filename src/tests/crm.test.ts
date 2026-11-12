@@ -108,7 +108,7 @@ describe("CRM", () => {
 });
 
 describe("fiche prospect : plusieurs quiz", () => {
-  it("résume le prospect par quiz, avec l'objectif et l'évolution entre deux participations", () => {
+  it("liste toutes les participations, de la plus récente à la plus ancienne, avec l'objectif de chaque quiz", () => {
     const w = publishedQuiz();
     const cfg = structuredClone(w.quiz.config);
     cfg.objective = "Qualifier la maturité financière";
@@ -117,20 +117,20 @@ describe("fiche prospect : plusieurs quiz", () => {
     const second = createQuiz(w.s, w.ctx, { title: "Quiz business", config: { ...sampleConfig(4), objective: "Évaluer la préparation à l'entrepreneuriat" } });
     publishQuiz(w.s, w.ctx, second.id);
 
-    const run = (slug: string, session: string, quiz: typeof w.quiz, idx: number) => { startQuiz(w.s, slug, session, {}); return completeQuiz(w.s, slug, session, answersFor(quiz.config, idx), contact("multi@example.com")); };
-    run(w.quiz.slug, "session-multi-0001", w.quiz, 2);
-    run(second.slug, "session-multi-0002", second, 1);
-    const q1 = w.s.quizzes.find((q) => q.id === w.quiz.id)!;
-    run(q1.slug, "session-multi-0003", q1, 0); // refait le premier quiz, meilleur score
+    const run = (slug: string, session: string, config: typeof cfg, idx: number) => { startQuiz(w.s, slug, session, {}); completeQuiz(w.s, slug, session, answersFor(config, idx), contact("multi@example.com")); };
+    run(w.quiz.slug, "session-multi-0001", cfg, 2);
+    run(second.slug, "session-multi-0002", second.config, 1);
+    run(w.quiz.slug, "session-multi-0003", cfg, 0);
 
     expect(w.s.leads).toHaveLength(1);
     const d = getLead(w.s, w.ctx, w.s.leads[0]!.id);
     expect(d.participations).toHaveLength(3);
-    expect(d.quizSummaries).toHaveLength(2);
-    const fin = d.quizSummaries.find((q) => q.quizId === w.quiz.id)!;
-    expect(fin).toMatchObject({ participations: 2, objective: "Qualifier la maturité financière" });
-    expect(fin.currentPercent!).toBeGreaterThan(fin.previousPercent!);
-    expect(d.quizSummaries.find((q) => q.quizId === second.id)).toMatchObject({ participations: 1, objective: "Évaluer la préparation à l'entrepreneuriat", previousPercent: null });
+    expect(d.participations.map((p) => p.quizTitle)).toEqual(["Mon diagnostic financier", "Quiz business", "Mon diagnostic financier"]);
+    expect(d.participations[1]!.objective).toBe("Évaluer la préparation à l'entrepreneuriat");
+    // Le filtre « plusieurs participations » retrouve ce prospect, pas un prospect à participation unique.
+    participate(w, "session-multi-0004", "solo@example.com");
+    expect(listLeads(w.s, w.ctx, { multiple: true }).rows.map((r) => r.email)).toEqual(["multi@example.com"]);
+    expect(listLeads(w.s, w.ctx, { pageSize: 10 }).rows.find((r) => r.email === "multi@example.com")!.participations).toBe(3);
   });
 });
 

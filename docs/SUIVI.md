@@ -27,14 +27,14 @@ Les phases fonctionnelles du PRD §16 sont couvertes, **hors Publications et Ass
 | §6.9 Mon Business | ✅ Deux onglets : Informations (`/business`) et Offres et services (`/business/offers`) | ⬜ Stockage du logo |
 | §6.10 Assistant IA | ⏸ Au chaud (codé, testé, désactivé) | ⬜ Modèle de langage réel si réactivé |
 | §6.11 Publications | ⏸ Au chaud (codé, désactivé) | — |
-| §13 Tests | ✅ 49 tests (dont modules au chaud, séparation business/offres et fiche multi-quiz) (scoring, cycle de vie, versions, participation, CRM, isolation, stats, auth, seed) | ⬜ Tests d'intégration base, E2E Playwright |
+| §13 Tests | ✅ 50 tests (dont modules au chaud, séparation business/offres, prospects multi-quiz) (scoring, cycle de vie, versions, participation, CRM, isolation, stats, auth, seed) | ⬜ Tests d'intégration base, E2E Playwright |
 | §15 Plans et quotas | ✅ Structure et application des limites | ⬜ Paiement (hors MVP) |
 
 ## 3. Journal des livraisons
 
 | Date | Livraison |
 |---|---|
-| 12/11/2026 | **Fiche prospect multi-quiz** : bandeau « Vue d'ensemble par quiz » (objectif, dernier profil, score, évolution vs participation précédente), participations regroupées par quiz avec les précédentes repliées. 49 tests. |
+| 12/11/2026 | **Prospects multi-participations** : la fiche liste toutes les participations (plus récente d'abord, objectif du quiz affiché) ; le CRM gagne une colonne « Participations » (pastille si > 1) et le filtre « Plusieurs participations seulement » (pris en compte par l'export CSV) ; le jeu de démo contient une dizaine de prospects ayant fait les deux quiz. 50 tests. |
 | 12/11/2026 | **Mon Business en deux onglets** (`/business`, `/business/offers`), chacun avec sa propre adresse (composant `TabNav`, réutilisable pour les Paramètres). Avant : deux cartes sur une page. |
 | 12/11/2026 | **Mon Business : informations de l'activité et offres/services séparées** en deux cartes avec leurs propres formulaires, schémas de validation, actions et enregistrements (modifier l'un ne touche pas l'autre). |
 | 12/11/2026 | **Publications et Assistant IA mis au chaud** (hors objectif de la plateforme). Drapeaux `LEADORA_FEATURE_PUBLICATIONS` / `LEADORA_FEATURE_AI` (désactivés par défaut) : menu, pages, actions, boutons d'amélioration IA, onglet IA de création, quota IA des paramètres, publications de démonstration, textes d'aide associés. Code et tests conservés. 45 tests. |

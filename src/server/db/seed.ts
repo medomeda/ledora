@@ -125,11 +125,12 @@ function seed(s: DbState) {
   type Flow = { slug: string; quizId: string; config: () => QuizConfig; visits: number; startRate: number; finishRate: number; contactRate: number; fromDay: number; reusePool: number };
   const flows: Flow[] = [
     { slug: "maturite-financiere", quizId: quiz1.id, config: () => s.quizzes.find((q) => q.id === quiz1.id)!.config, visits: 132, startRate: 0.74, finishRate: 0.8, contactRate: 1, fromDay: 35, reusePool: 0 },
-    { slug: "type-entrepreneur", quizId: quiz2.id, config: () => s.quizzes.find((q) => q.id === quiz2.id)!.config, visits: 64, startRate: 0.7, finishRate: 0.74, contactRate: 0.72, fromDay: 27, reusePool: 0.3 },
+    { slug: "type-entrepreneur", quizId: quiz2.id, config: () => s.quizzes.find((q) => q.id === quiz2.id)!.config, visits: 64, startRate: 0.7, finishRate: 0.74, contactRate: 0.72, fromDay: 27, reusePool: 0.34 },
   ];
 
   const events: Array<() => void> = [];
   let sessionN = 0;
+  let contactN = 0;
   for (const f of flows) {
     for (let i = 0; i < f.visits; i++) {
       // Plus de trafic récemment (courbe en croissance) : jour = fromDay * (1 - r^0.6).
@@ -143,7 +144,9 @@ function seed(s: DbState) {
       const wantsStart = random() < f.startRate;
       const wantsFinish = wantsStart && random() < f.finishRate;
       const wantsContact = wantsFinish && random() < f.contactRate;
-      const person = wantsContact ? (random() < f.reusePool && pool.length > 0 ? pick(pool) : newPerson()) : null;
+      // Cas « même prospect, plusieurs quiz » : un contact sur trois du second quiz est une personne déjà issue du premier (déterministe, pour la démonstration).
+      const reuse = wantsContact && f.reusePool > 0 && contactN++ % Math.round(1 / f.reusePool) === 0 && pool.length > 0;
+      const person = wantsContact ? (reuse ? pool[(contactN * 7) % pool.length]! : newPerson()) : null;
       const consent = random() < 0.7;
       events.push(() => {
         // Les participations sont rejouées dans l'ordre chronologique (voir tri ci-dessous).

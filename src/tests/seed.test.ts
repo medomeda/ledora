@@ -27,6 +27,15 @@ describe("jeu de démonstration", () => {
     expect(listQuizzes(s, ctx).map((q) => q.status).sort()).toEqual(["archived", "draft", "published", "published"]);
   });
 
+  it("contient des prospects ayant participé à plusieurs quiz", () => {
+    const multi = listLeads(s, ctx, { multiple: true, pageSize: 1000 });
+    expect(multi.total).toBeGreaterThanOrEqual(5);
+    for (const row of multi.rows) {
+      const quizzes = new Set(s.quizSubmissions.filter((x) => x.leadId === row.id).map((x) => x.quizId));
+      expect(quizzes.size).toBeGreaterThan(1);
+    }
+  });
+
   it("conserve les versions du quiz republié", () => {
     expect(s.quizVersions.filter((v) => v.version === 2)).toHaveLength(1);
     const used = new Set(s.quizSubmissions.map((x) => x.versionId));

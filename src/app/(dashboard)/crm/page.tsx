@@ -28,9 +28,9 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
   const user = await requireUser("/crm");
   const ctx = ctxFor(user.id);
   const status = LEAD_STATUS_ORDER.includes(sp.status as LeadStatus) ? (sp.status as LeadStatus) : undefined;
-  const filters = { q: sp.q, quizId: sp.quiz, profile: sp.profile, status, tagId: sp.tag, from: sp.from, to: sp.to, page: Number(sp.page) || 1 };
+  const filters = { q: sp.q, quizId: sp.quiz, profile: sp.profile, status, multiple: sp.multiple === "1", tagId: sp.tag, from: sp.from, to: sp.to, page: Number(sp.page) || 1 };
   const { page, quizzes, profiles, tags, totalLeads } = read((s) => ({ page: listLeads(s, ctx, filters), quizzes: listQuizzes(s, ctx).map((q) => ({ id: q.id, title: q.title })), profiles: listProfileNames(s, ctx), tags: listTags(s, ctx), totalLeads: listLeads(s, ctx, { pageSize: 1 }).total }));
-  const filtered = !!(sp.q || sp.quiz || sp.profile || sp.status || sp.tag || sp.from || sp.to);
+  const filtered = !!(sp.q || sp.quiz || sp.profile || sp.status || sp.tag || sp.from || sp.to || sp.multiple);
   const pageHref = (p: number) => { const n = new URLSearchParams(Object.entries(sp).filter(([, v]) => v) as [string, string][]); n.set("page", String(p)); return `/crm?${n.toString()}`; };
   const exportHref = `/crm/export?${new URLSearchParams(Object.entries(sp).filter(([k, v]) => v && k !== "page") as [string, string][]).toString()}`;
 
@@ -50,7 +50,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
               <>
                 <div className="hidden md:block">
                   <Table>
-                    <THead><tr><TH>Prospect</TH><TH>Téléphone</TH><TH>Profil</TH><TH className="text-right">Score</TH><TH>Quiz d&apos;origine</TH><TH>Inscrit le</TH><TH>Statut</TH></tr></THead>
+                    <THead><tr><TH>Prospect</TH><TH>Téléphone</TH><TH>Profil</TH><TH className="text-right">Score</TH><TH>Quiz d&apos;origine</TH><TH className="text-right">Participations</TH><TH>Inscrit le</TH><TH>Statut</TH></tr></THead>
                     <tbody>
                       {page.rows.map((l) => (
                         <TR key={l.id}>
@@ -58,7 +58,8 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
                           <TD className="whitespace-nowrap text-muted-foreground">{l.phone || "—"}</TD>
                           <TD>{l.profileName ? <Badge tone="info">{l.profileName}</Badge> : "—"}</TD>
                           <TD className="text-right tabular-nums">{l.score !== null ? `${l.score}/${l.maxScore}` : "—"}</TD>
-                          <TD className="max-w-48 truncate text-muted-foreground">{l.originQuizTitle ?? "—"}{l.participations > 1 && <span className="ml-1 text-xs">(+{l.participations - 1})</span>}</TD>
+                          <TD className="max-w-48 truncate text-muted-foreground">{l.originQuizTitle ?? "—"}</TD>
+                          <TD className="text-right tabular-nums">{l.participations > 1 ? <Badge tone="warning">{l.participations}</Badge> : l.participations}</TD>
                           <TD className="whitespace-nowrap text-muted-foreground">{fmtDate(l.createdAt)}</TD>
                           <TD><LeadStatusBadge status={l.status} /></TD>
                         </TR>
@@ -70,7 +71,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
                   {page.rows.map((l) => (
                     <li key={l.id}><Link href={`/crm/${l.id}`} className="block p-4 hover:bg-muted/40">
                       <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="truncate font-medium">{l.firstName} {l.lastName}</p><p className="truncate text-xs text-muted-foreground">{l.email}</p></div><LeadStatusBadge status={l.status} /></div>
-                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">{l.profileName && <Badge tone="info">{l.profileName}</Badge>}{l.score !== null && <span>Score {l.score}/{l.maxScore}</span>}<span>{fmtDate(l.createdAt)}</span></div>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">{l.profileName && <Badge tone="info">{l.profileName}</Badge>}{l.score !== null && <span>Score {l.score}/{l.maxScore}</span>}{l.participations > 1 && <Badge tone="warning">{l.participations} participations</Badge>}<span>{fmtDate(l.createdAt)}</span></div>
                     </Link></li>
                   ))}
                 </ul>
