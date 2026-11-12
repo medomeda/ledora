@@ -1,5 +1,5 @@
 "use client";
-import { ImageIcon, LayoutTemplate, Palette, PanelBottom, RotateCcw, Shapes, Type } from "lucide-react";
+import { ChevronDown, ImageIcon, LayoutTemplate, Palette, PanelBottom, RotateCcw, Shapes, Type } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import type { StepProps } from "@/components/quiz/quiz-builder";
@@ -36,33 +36,32 @@ const GROUPS: Array<{ id: GroupId; label: string; icon: typeof Palette; hint: st
   { id: "footer", label: "Pied de page", icon: PanelBottom, hint: "Texte libre et mention Leadora." },
 ];
 
-/** Onglet Design : un seul groupe de réglages à la fois (navigation par tuiles), l'aperçu à droite suit chaque modification. */
+/** Carte repliable : un clic sur l'en-tête ouvre ou ferme le groupe de réglages. */
+function Section({ id, title, hint, icon: Icon, open, onToggle, children }: { id: string; title: string; hint: string; icon: typeof Palette; open: boolean; onToggle: () => void; children: React.ReactNode }) {
+  return (
+    <Card className="overflow-hidden">
+      <button type="button" id={`dh-${id}`} aria-expanded={open} aria-controls={`dp-${id}`} onClick={onToggle} className="flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-muted/40 sm:px-5">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"><Icon className="size-4" aria-hidden /></span>
+        <span className="min-w-0 flex-1"><span className="block font-display text-base font-semibold">{title}</span><span className="block truncate text-xs text-muted-foreground">{hint}</span></span>
+        <ChevronDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} aria-hidden />
+      </button>
+      {open && <div id={`dp-${id}`} role="region" aria-labelledby={`dh-${id}`} className="space-y-4 border-t px-4 py-4 sm:px-5">{children}</div>}
+    </Card>
+  );
+}
+
+/** Onglet Design : des cartes repliables (Thème ouvert au départ) ; l'aperçu à droite suit chaque modification. */
 export function DesignStep({ config, update, plan, hasLogo }: StepProps) {
-  const [group, setGroup] = useState<GroupId>("theme");
+  const [open, setOpen] = useState<Record<GroupId, boolean>>({ theme: true, type: false, header: false, layout: false, style: false, footer: false });
+  const toggle = (id: GroupId) => setOpen((o) => ({ ...o, [id]: !o[id] }));
+  const allOpen = GROUPS.every((g) => open[g.id]);
   const d = resolveDesign(config.design);
   const set = (patch: Partial<QuizDesign>) => update((c) => void (c.design = { ...(c.design ?? {}), ...patch }));
   const pal = palette(d);
   const free = plan === "free";
-  const current = GROUPS.find((g) => g.id === group)!;
-
-  return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Catégories de réglages">
-        {GROUPS.map(({ id, label, icon: Icon }) => (
-          <button key={id} type="button" role="tab" id={`dg-${id}`} aria-selected={group === id} aria-controls="dg-panel" onClick={() => setGroup(id)} className={cn("flex flex-col items-center gap-1 rounded-xl border px-2 py-2.5 text-xs font-medium", group === id ? "border-primary bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground")}>
-            <Icon className="size-[18px]" aria-hidden />
-            {label}
-          </button>
-        ))}
-      </div>
-
-      <Card className="p-4 sm:p-5">
-        <div role="tabpanel" id="dg-panel" aria-labelledby={`dg-${group}`} className="space-y-4">
-          <div className="flex items-start justify-between gap-3">
-            <div><h3 className="font-display text-base font-semibold">{current.label}</h3><p className="mt-0.5 text-sm text-muted-foreground">{current.hint}</p></div>
-            {config.design && Object.keys(config.design).length > 0 && <Button variant="ghost" size="sm" className="-mr-2 shrink-0" onClick={() => update((c) => void (c.design = undefined))}><RotateCcw /> Réinitialiser</Button>}
-          </div>
-
+  const customized = !!config.design && Object.keys(config.design).length > 0;
+  const body = (group: GroupId) => (
+    <>
           {group === "theme" && (
             <>
               <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Thème">
@@ -141,8 +140,16 @@ export function DesignStep({ config, update, plan, hasLogo }: StepProps) {
               <label className="flex items-start gap-3 text-sm"><Switch className="mt-0.5" checked={free ? true : d.showPoweredBy} disabled={free} onChange={(e) => set({ showPoweredBy: e.target.checked })} /><span><span className="block font-medium">Afficher « Propulsé par Leadora »</span><span className="text-muted-foreground">{free ? "Obligatoire avec l'offre Gratuit. Vous pourrez la retirer avec une offre supérieure." : "Vous pouvez retirer cette mention."}</span></span></label>
             </>
           )}
-        </div>
-      </Card>
+    </>
+  );
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <button type="button" onClick={() => setOpen(Object.fromEntries(GROUPS.map((g) => [g.id, !allOpen])) as Record<GroupId, boolean>)} className="text-sm font-medium text-muted-foreground hover:text-foreground">{allOpen ? "Tout replier" : "Tout déplier"}</button>
+        {customized && <Button variant="ghost" size="sm" onClick={() => update((c) => void (c.design = undefined))}><RotateCcw /> Réinitialiser le design</Button>}
+      </div>
+      {GROUPS.map((g) => <Section key={g.id} id={g.id} title={g.label} hint={g.hint} icon={g.icon} open={open[g.id]} onToggle={() => toggle(g.id)}>{body(g.id)}</Section>)}
     </div>
   );
 }
