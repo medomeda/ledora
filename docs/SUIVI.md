@@ -52,6 +52,8 @@ Les phases fonctionnelles du PRD §16 sont couvertes, **hors Publications et Ass
 - Durée de conservation des données et procédure de demande de suppression côté participant (aujourd'hui : suppression par le créateur).
 - Captcha ou équivalent sur le formulaire de capture pour les volumes réels.
 
+- Landing page de conversion : démo jouable, cas d'usage, fonctionnalités, tarifs (lus depuis `PLANS`), FAQ ; SEO : métadonnées, canonical, Open Graph + image générée, JSON-LD (Organization, SoftwareApplication, FAQPage), `sitemap.xml`, `robots.txt`. Variable `NEXT_PUBLIC_SITE_URL`. Prix Starter/Pro non figés : affichés « Bientôt ».
+
 ## 5. Limites connues de la phase simulée
 
 - Un seul processus serveur : la base est un fichier JSON, les limiteurs de fréquence sont en mémoire.
