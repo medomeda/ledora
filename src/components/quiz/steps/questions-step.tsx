@@ -10,7 +10,7 @@ import { Input, Select, Switch, Textarea } from "@/components/ui/input";
 import { blankOption, blankQuestion, newUid } from "@/lib/quiz/factory";
 import { cn } from "@/lib/utils/cn";
 import { profileColor } from "@/lib/constants/profile-colors";
-import { profilePotential, questionMaxScore } from "@/services/scoring.service";
+import { questionMaxScore } from "@/services/scoring.service";
 import type { QuizOption } from "@/types/domain";
 
 const int = (v: string) => Math.max(-100, Math.min(100, Math.trunc(Number(v)) || 0));
@@ -29,7 +29,6 @@ function move<T>(arr: T[], from: number, to: number) {
 
 export function QuestionsStep({ config, update, goTo }: StepProps) {
   const [open, setOpen] = useState<string | null>(config.questions[0]?.id ?? null);
-  const [weighted, setWeighted] = useState<Set<string>>(new Set());
   const showGlobal = config.scoringMode === "ranges" || config.result.showScore;
   const profiles = config.profiles;
   const ranges = config.scoringMode === "ranges";
@@ -46,9 +45,9 @@ export function QuestionsStep({ config, update, goTo }: StepProps) {
 
   return (
     <div className="space-y-4">
-      {!ranges && profiles.length === 0 && <Alert tone="warning">Pour relier les réponses à des profils, <button className="font-medium underline" onClick={() => goTo("profiles")}>définissez d&apos;abord vos profils</button> (étape 2).</Alert>}
-      {!ranges && profiles.length > 0 && <BalanceBar config={config} />}
-      <p className="text-sm text-muted-foreground">{config.questions.length} question{config.questions.length > 1 ? "s" : ""}{ranges || config.result.showScore ? ` · score maximum ${config.questions.reduce((a, q) => a + questionMaxScore(q), 0)} points` : ""}</p>
+      <p className="max-w-2xl text-sm text-muted-foreground">{ranges ? "Donnez des points à chaque réponse : le total du participant détermine son profil, selon les plages définies à l'étape Résultats." : "Pour chaque réponse, choisissez le profil qu'elle indique. À la fin, le participant reçoit le profil que ses réponses ont le plus souvent indiqué."}</p>
+      {!ranges && profiles.length === 0 && <Alert tone="warning">Aucun profil n&apos;est défini. <button className="font-medium underline" onClick={() => goTo("profiles")}>Définissez-les à l&apos;étape Profils</button> pour pouvoir les relier aux réponses.</Alert>}
+      {!ranges && profiles.length > 0 && <CoverageSummary config={config} />}
 
       {config.questions.map((q, qi) => {
         const isOpen = open === q.id;
@@ -88,15 +87,11 @@ export function QuestionsStep({ config, update, goTo }: StepProps) {
                 )}
 
                 <div>
-                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="text-sm font-semibold">Réponses{ranges ? " et points" : " et profils associés"}</h3>
-                    {!ranges && profiles.length > 0 && <button type="button" onClick={() => setWeighted((w) => { const n = new Set(w); if (n.has(q.id)) n.delete(q.id); else n.add(q.id); return n; })} className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground">{weighted.has(q.id) ? "Revenir aux pastilles" : "Pondérer finement"}</button>}
-                  </div>
-                  {!ranges && profiles.length > 0 && !weighted.has(q.id) && <p className="mb-2 text-xs text-muted-foreground">Cliquez sur le ou les profils vers lesquels chaque réponse pointe.</p>}
-                  <ul className="space-y-3">
+                  <h3 className="mb-2 text-sm font-semibold">Réponses proposées</h3>
+                  <ul className="space-y-2">
                     {q.options.map((o, oi) => (
-                      <OptionRow key={o.id} option={o} index={oi} count={q.options.length} showGlobal={showGlobal} globalLabel={ranges ? "Points" : "Points au score global"}
-                        profiles={ranges ? [] : profiles.map((p, i) => ({ id: p.id, name: p.name || "Profil sans nom", color: profileColor(p, i) }))} weighted={weighted.has(q.id)}
+                      <OptionRow key={o.id} option={o} index={oi} count={q.options.length} showGlobal={showGlobal} ranges={ranges}
+                        profiles={profiles.map((p, i) => ({ id: p.id, name: p.name || "Profil sans nom", color: profileColor(p, i) }))}
                         onChange={(fn) => update((c) => fn(c.questions[qi]!.options[oi]!))}
                         onMove={(d) => update((c) => move(c.questions[qi]!.options, oi, oi + d))}
                         onRemove={() => update((c) => void c.questions[qi]!.options.splice(oi, 1))} canRemove={q.options.length > 2} />
@@ -119,73 +114,59 @@ export function QuestionsStep({ config, update, goTo }: StepProps) {
   );
 }
 
-function BalanceBar({ config }: { config: StepProps["config"] }) {
-  const potential = profilePotential(config);
-  const max = Math.max(1, ...Object.values(potential));
+/** Combien de réponses indiquent chaque profil : un profil à 0 ne pourra jamais être obtenu. */
+function CoverageSummary({ config }: { config: StepProps["config"] }) {
+  const counts = new Map(config.profiles.map((p) => [p.id, 0]));
+  for (const q of config.questions) for (const o of q.options) for (const pp of o.profilePoints) if (pp.points > 0) counts.set(pp.profileId, (counts.get(pp.profileId) ?? 0) + 1);
+  const missing = config.profiles.filter((p) => (counts.get(p.id) ?? 0) === 0);
   return (
-    <div className="rounded-xl border bg-card p-4" aria-label="Équilibre des profils">
-      <p className="mb-3 text-sm font-medium">Points possibles par profil</p>
-      <ul className="space-y-2">
-        {config.profiles.map((p, i) => {
-          const v = potential[p.id] ?? 0;
-          return (
-            <li key={p.id} className="flex items-center gap-3 text-sm">
-              <span className="w-40 shrink-0 truncate" title={p.name}>{p.name || "Profil sans nom"}</span>
-              <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full" style={{ width: `${(v / max) * 100}%`, background: profileColor(p, i) }} /></div>
-              <span className={cn("w-24 shrink-0 text-right tabular-nums", v === 0 ? "font-medium text-destructive" : "text-muted-foreground")}>{v === 0 ? "Inatteignable" : `${v} pt${v > 1 ? "s" : ""}`}</span>
-            </li>
-          );
-        })}
+    <div className="rounded-xl border bg-card p-4">
+      <ul className="flex flex-wrap gap-x-6 gap-y-2 text-sm" aria-label="Réponses par profil">
+        {config.profiles.map((p, i) => (
+          <li key={p.id} className="flex items-center gap-2"><span className="size-3 rounded-full" style={{ background: profileColor(p, i) }} /><span>{p.name || "Profil sans nom"}</span><span className="text-muted-foreground">{counts.get(p.id) ?? 0} réponse{(counts.get(p.id) ?? 0) > 1 ? "s" : ""}</span></li>
+        ))}
       </ul>
-      <p className="mt-3 text-xs text-muted-foreground">Un profil sans points possibles ne pourra jamais être obtenu. Des totaux proches donnent un diagnostic équilibré.</p>
+      {missing.length > 0 && config.questions.length > 0 && <p className="mt-2 text-sm text-destructive">Aucune réponse n&apos;indique {missing.map((p) => `« ${p.name || "profil sans nom"} »`).join(", ")} : {missing.length > 1 ? "ces profils ne pourront" : "ce profil ne pourra"} jamais être obtenu{missing.length > 1 ? "s" : ""}.</p>}
     </div>
   );
 }
 
-function OptionRow({ option, index, count, showGlobal, globalLabel, profiles, weighted, onChange, onMove, onRemove, canRemove }: {
-  option: QuizOption; index: number; count: number; showGlobal: boolean; globalLabel: string; profiles: Array<{ id: string; name: string; color: string }>; weighted: boolean;
+const NO_PROFILE = "";
+
+function OptionRow({ option, index, count, showGlobal, ranges, profiles, onChange, onMove, onRemove, canRemove }: {
+  option: QuizOption; index: number; count: number; showGlobal: boolean; ranges: boolean; profiles: Array<{ id: string; name: string; color: string }>;
   onChange: (fn: (o: QuizOption) => void) => void; onMove: (delta: number) => void; onRemove: () => void; canRemove: boolean;
 }) {
-  const pointsFor = (pid: string) => option.profilePoints.find((p) => p.profileId === pid)?.points ?? 0;
-  const setPoints = (pid: string, pts: number) => onChange((o) => { o.profilePoints = o.profilePoints.filter((x) => x.profileId !== pid); if (pts !== 0) o.profilePoints.push({ profileId: pid, points: pts }); });
+  const main = [...option.profilePoints].sort((a, b) => b.points - a.points)[0];
+  const current = main && profiles.some((p) => p.id === main.profileId) ? main.profileId : NO_PROFILE;
+  const color = profiles.find((p) => p.id === current)?.color;
   return (
-    <li className="rounded-lg border bg-card p-3">
-      <div className="flex items-start gap-2">
-        <div className="min-w-0 flex-1 space-y-2.5">
-          <Input aria-label={`Réponse ${index + 1}`} value={option.label} maxLength={200} placeholder={`Réponse ${index + 1}`} onChange={(e) => onChange((o) => void (o.label = e.target.value))} />
-          {profiles.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Profils associés à cette réponse">
-              {profiles.map((p) => {
-                const pts = pointsFor(p.id);
-                if (weighted) {
-                  return (
-                    <label key={p.id} className="flex items-center gap-1.5 rounded-full border py-0.5 pl-2 pr-0.5 text-xs">
-                      <span className="size-2.5 rounded-full" style={{ background: p.color }} /><span className="max-w-28 truncate" title={p.name}>{p.name}</span>
-                      <Input type="number" inputMode="numeric" min={0} max={9} aria-label={`Points pour ${p.name}`} className="h-6 w-12 rounded-full px-1.5 text-center text-xs" value={pts} onChange={(e) => setPoints(p.id, Math.max(0, Math.min(9, Math.trunc(Number(e.target.value)) || 0)))} />
-                    </label>
-                  );
-                }
-                return (
-                  <button key={p.id} type="button" aria-pressed={pts > 0} title={p.name} onClick={() => setPoints(p.id, pts > 0 ? 0 : 1)}
-                    className={cn("flex max-w-40 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors", pts > 0 ? "border-transparent text-white" : "bg-card text-muted-foreground hover:bg-muted")} style={pts > 0 ? { background: p.color } : undefined}>
-                    {pts === 0 && <span className="size-2.5 shrink-0 rounded-full" style={{ background: p.color }} />}
-                    <span className="truncate">{p.name}</span>{pts > 1 && <span className="shrink-0">×{pts}</span>}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          {showGlobal && (
-            <label className="flex items-center gap-2 text-xs text-muted-foreground">{globalLabel}
-              <Input type="number" inputMode="numeric" aria-label={`${globalLabel} de la réponse ${index + 1}`} className="h-8 w-16 px-2 text-center" value={option.points} onChange={(e) => onChange((o) => void (o.points = int(e.target.value)))} />
-            </label>
-          )}
-        </div>
-        <div className="flex shrink-0 flex-col">
-          <Button variant="ghost" size="icon-sm" aria-label="Monter la réponse" disabled={index === 0} onClick={() => onMove(-1)}><ArrowUp /></Button>
-          <Button variant="ghost" size="icon-sm" aria-label="Descendre la réponse" disabled={index === count - 1} onClick={() => onMove(1)}><ArrowDown /></Button>
-          <Button variant="ghost" size="icon-sm" aria-label="Supprimer la réponse" disabled={!canRemove} onClick={onRemove}><Trash2 /></Button>
-        </div>
+    <li className="grid gap-2 rounded-lg border bg-card p-2.5 sm:grid-cols-[1fr_minmax(0,15rem)_auto] sm:items-center">
+      <Input aria-label={`Réponse ${index + 1}`} value={option.label} maxLength={200} placeholder={`Réponse ${index + 1}`} onChange={(e) => onChange((o) => void (o.label = e.target.value))} />
+      <div className="flex items-center gap-2">
+        {!ranges && profiles.length > 0 && (
+          <div className="relative min-w-0 flex-1">
+            <span className="pointer-events-none absolute left-3 top-1/2 size-2.5 -translate-y-1/2 rounded-full" style={{ background: color ?? "var(--input)" }} />
+            <select aria-label={`Profil indiqué par la réponse ${index + 1}`} value={current} onChange={(e) => onChange((o) => {
+              const id = e.target.value;
+              // Changer de profil remplace l'association ; une pondération existante est conservée si le profil ne change pas.
+              o.profilePoints = id === NO_PROFILE ? [] : [{ profileId: id, points: id === main?.profileId ? main.points : 1 }];
+            })} className={cn("h-10 w-full rounded-lg border border-input bg-card pl-8 pr-8 text-sm focus-visible:outline-2 focus-visible:outline-ring", current === NO_PROFILE && "text-muted-foreground")}>
+              <option value={NO_PROFILE}>Indique : aucun profil</option>
+              {profiles.map((p) => <option key={p.id} value={p.id}>Indique : {p.name}</option>)}
+            </select>
+          </div>
+        )}
+        {showGlobal && (
+          <label className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">Points
+            <Input type="number" inputMode="numeric" aria-label={`Points de la réponse ${index + 1}`} className="h-10 w-16 px-2 text-center" value={option.points} onChange={(e) => onChange((o) => void (o.points = Math.max(-100, Math.min(100, Math.trunc(Number(e.target.value)) || 0))))} />
+          </label>
+        )}
+      </div>
+      <div className="flex shrink-0">
+        <Button variant="ghost" size="icon-sm" aria-label="Monter la réponse" disabled={index === 0} onClick={() => onMove(-1)}><ArrowUp /></Button>
+        <Button variant="ghost" size="icon-sm" aria-label="Descendre la réponse" disabled={index === count - 1} onClick={() => onMove(1)}><ArrowDown /></Button>
+        <Button variant="ghost" size="icon-sm" aria-label="Supprimer la réponse" disabled={!canRemove} onClick={onRemove}><Trash2 /></Button>
       </div>
     </li>
   );

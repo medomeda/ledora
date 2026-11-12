@@ -51,9 +51,9 @@ devient `db.transaction()` et chaque tableau devient une table ; services et éc
 
 ## Créateur de quiz : ordre des étapes
 
-Informations → **Profils** (mode de calcul, nom, description, couleur, priorité) → **Questions** (réponses reliées aux
-profils par pastilles colorées, pondération facultative, points au score global seulement quand il sert : mode « plages »
-ou score affiché) → **Résultats** (diagnostic, recommandations, bouton d'action, tags ; éditeur visuel des plages en
+Informations → **Profils** (liste ordonnée : nom, description ; l'ordre fixe la priorité en cas d'égalité ; couleur automatique ; mode de calcul
+repliable) → **Questions** (chaque réponse « indique » un profil via une liste déroulante ; résumé « N réponses par profil » avec
+alerte sur un profil jamais indiqué ; points au score global seulement quand il sert : mode « plages » ou score affiché) → **Résultats** (diagnostic, recommandations, bouton d'action, tags ; éditeur visuel des plages en
 mode « plages ») → Capture → Publication. Les profils précèdent les questions car celles-ci y font référence ;
 leur contenu vient après car il dépend de ce que les questions mesurent. Contrôles d'équilibre :
 `profilePotential` (points possibles par profil), `rangeCoverage` (trous et chevauchements), `validateForPublish`.
