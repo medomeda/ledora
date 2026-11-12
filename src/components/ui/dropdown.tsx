@@ -3,7 +3,14 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import * as React from "react";
 import { cn } from "@/lib/utils/cn";
 
-export const DropdownMenu = DropdownMenuPrimitive.Root;
+/**
+ * Non modal : Radix verrouille sinon le défilement de la page et compense la barre de défilement par une marge, ce qui
+ * décale tout le contenu de ~15 px à l'ouverture. Un menu déroulant n'a pas besoin de bloquer la page ;
+ * il se ferme toujours au clic extérieur et à Échap.
+ */
+export function DropdownMenu(props: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
+  return <DropdownMenuPrimitive.Root modal={false} {...props} />;
+}
 export const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 
 export function DropdownMenuContent({ className, sideOffset = 6, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {

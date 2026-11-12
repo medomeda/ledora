@@ -75,6 +75,12 @@
   * {
     @apply border-border;
   }
+  /* Fenêtres modales (Radix) : la place de la barre de défilement est déjà réservée par `scrollbar-gutter: stable`,
+     la marge de compensation qu'elles ajoutent à l'ouverture décalerait la page pour rien. */
+  html body[data-scroll-locked] {
+    margin-right: 0 !important;
+    padding-right: 0 !important;
+  }
   html {
     /* Réserve toujours la place de la barre de défilement : sans cela, le contenu centré se décale de quelques pixels quand on passe d'une page courte à une page longue (ex. onglets de Mon Business). */
     scrollbar-gutter: stable;
