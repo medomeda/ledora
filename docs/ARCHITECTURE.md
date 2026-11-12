@@ -2,6 +2,13 @@
 
 Monolithe modulaire Next.js (App Router). Pas de backend séparé. Voir le [PRD](PRD.md) §8 et §9.
 
+## Modules au chaud
+
+`src/lib/features.ts` : Publications (`LEADORA_FEATURE_PUBLICATIONS`) et Assistant IA (`LEADORA_FEATURE_AI`) sont désactivés par
+défaut. Leur code reste en place (services, actions, pages, tests) ; le drapeau masque le menu et les boutons « Améliorer
+avec l'IA » / l'onglet IA de création (via `FeaturesProvider`), répond 404 aux pages et refuse les actions. Le quota de
+générations IA n'apparaît plus dans les paramètres. Réactivation = variable d'environnement, sans modification de code.
+
 ## Couches
 
 ```

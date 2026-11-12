@@ -16,7 +16,7 @@ export default async function BusinessPage() {
   const business = await guard(() => read((s) => getBusiness(s, ctxFor(user.id))));
   return (
     <div className="max-w-3xl">
-      <PageHeader title="Mon Business" description="Les informations de votre activité. Elles personnalisent vos quiz publics et nourrissent l'Assistant IA." />
+      <PageHeader title="Mon Business" description="Les informations de votre activité. Elles personnalisent vos quiz publics." />
       <Card><CardBody className="sm:p-7"><BusinessForm business={business} mode="full" /></CardBody></Card>
     </div>
   );

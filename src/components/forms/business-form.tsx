@@ -54,7 +54,7 @@ export function BusinessForm({ business, mode }: { business: Business; mode: "on
         <Field label="Domaine d'intervention" htmlFor="industry" optional hint="Ex. : coaching financier, marketing digital, langues…">
           <Input id="industry" {...register("industry")} />
         </Field>
-        <Field label="Description de votre activité" htmlFor="description" className="sm:col-span-2" hint="Utilisée pour contextualiser les propositions de l'Assistant IA.">
+        <Field label="Description de votre activité" htmlFor="description" className="sm:col-span-2" hint="Présentez votre activité en quelques phrases.">
           <Textarea id="description" rows={3} {...register("description")} />
         </Field>
         <Field label="Nom du responsable" htmlFor="managerName"><Input id="managerName" {...register("managerName")} /></Field>
@@ -83,7 +83,7 @@ export function BusinessForm({ business, mode }: { business: Business; mode: "on
       </Field>
 
       {full && (
-        <Field label="Offres et services principaux" hint="Jusqu'à 10. L'Assistant IA s'en sert pour proposer des appels à l'action pertinents.">
+        <Field label="Offres et services principaux" hint="Jusqu'à 10 offres que vous proposez à vos prospects.">
           <div className="space-y-2">
             {offers.fields.map((f, i) => (
               <div key={f.id} className="flex gap-2">

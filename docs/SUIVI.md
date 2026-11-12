@@ -8,7 +8,7 @@ Liens : [PRD](PRD.md) · [Architecture et décisions](ARCHITECTURE.md) · [READM
 ## 1. Où en est-on ?
 
 **Phase 1 — Application complète sur données simulées : livrée, prête à tester** (`npm run dev`, voir README).
-Les 7 phases fonctionnelles du PRD §16 sont couvertes avec des règles métier et des permissions réelles.
+Les phases fonctionnelles du PRD §16 sont couvertes, **hors Publications et Assistant IA mis au chaud le 12/11/2026** (désactivés par drapeau, code conservé) avec des règles métier et des permissions réelles.
 
 **Phase 2 — Persistance et services réels : à venir** (PostgreSQL, Drizzle, Better Auth, IA réelle, e-mails, stockage de fichiers).
 
@@ -25,21 +25,21 @@ Les 7 phases fonctionnelles du PRD §16 sont couvertes avec des règles métier 
 | §6.7 CRM | ✅ Doublons, historique, tags (auto et manuels), notes, statuts, filtres, export CSV, effacement | — |
 | §6.8 Statistiques | ✅ Par quiz et globales, sources, profils, scores | — |
 | §6.9 Mon Business | ✅ | ⬜ Stockage du logo |
-| §6.10 Assistant IA | ✅ Génération et reformulation via fournisseur simulé, quotas, historique | ⬜ Modèle de langage réel |
-| §6.11 Publications | ✅ Mois / semaine / liste | — |
-| §13 Tests | ✅ 43 tests (scoring, cycle de vie, versions, participation, CRM, isolation, stats, auth, seed) | ⬜ Tests d'intégration base, E2E Playwright |
+| §6.10 Assistant IA | ⏸ Au chaud (codé, testé, désactivé) | ⬜ Modèle de langage réel si réactivé |
+| §6.11 Publications | ⏸ Au chaud (codé, désactivé) | — |
+| §13 Tests | ✅ 45 tests (dont modules au chaud) (scoring, cycle de vie, versions, participation, CRM, isolation, stats, auth, seed) | ⬜ Tests d'intégration base, E2E Playwright |
 | §15 Plans et quotas | ✅ Structure et application des limites | ⬜ Paiement (hors MVP) |
 
 ## 3. Journal des livraisons
 
 | Date | Livraison |
 |---|---|
+| 12/11/2026 | **Publications et Assistant IA mis au chaud** (hors objectif de la plateforme). Drapeaux `LEADORA_FEATURE_PUBLICATIONS` / `LEADORA_FEATURE_AI` (désactivés par défaut) : menu, pages, actions, boutons d'amélioration IA, onglet IA de création, quota IA des paramètres, publications de démonstration, textes d'aide associés. Code et tests conservés. 45 tests. |
 | 12/11/2026 | **Phase 1 complète sur données simulées.** Socle (domaine, base simulée avec transactions, services testés), design system, authentification, dashboard, créateur de quiz, page publique et endpoint public, CRM, statistiques, Assistant IA, publications, paramètres. Jeu de démonstration produit en rejouant les vrais services. Vérifié : typecheck, 43 tests, build de production, parcours public → CRM → export CSV via HTTP. **Non vérifié** : rendu visuel dans un navigateur (aucun navigateur piloté dans cet environnement) — à contrôler lors de la première session de test. |
 
 ## 4. Questions ouvertes
 
 - Nom de domaine et adresse publique des quiz (le PRD donne `app.diagnosticintelligent.com/q/…` en exemple).
-- Fournisseur d'IA retenu et politique de quotas par offre.
 - Politique de confidentialité : texte et versionnement du consentement (la version `2026-11` est un marqueur).
 - Durée de conservation des données et procédure de demande de suppression côté participant (aujourd'hui : suppression par le créateur).
 - Captcha ou équivalent sur le formulaire de capture pour les volumes réels.

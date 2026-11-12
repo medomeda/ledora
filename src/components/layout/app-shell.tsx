@@ -9,24 +9,26 @@ import { Brand } from "@/components/layout/brand";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown";
 import { cn } from "@/lib/utils/cn";
+import { useFeatures } from "@/components/layout/features-context";
 import { initials } from "@/lib/utils/text";
 import { toast } from "sonner";
 
-const NAV = [
+const NAV: Array<{ href: string; label: string; icon: typeof Gauge; feature?: "publications" | "ai" }> = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
   { href: "/business", label: "Mon Business", icon: Store },
   { href: "/lead-magnets", label: "Lead Magnets", icon: Target },
   { href: "/crm", label: "CRM", icon: Users },
-  { href: "/publications", label: "Publications", icon: CalendarDays },
-  { href: "/assistant", label: "Assistant IA", icon: Bot },
+  { href: "/publications", label: "Publications", icon: CalendarDays, feature: "publications" },
+  { href: "/assistant", label: "Assistant IA", icon: Bot, feature: "ai" },
   { href: "/settings", label: "Paramètres", icon: Settings },
 ];
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const features = useFeatures();
   return (
     <nav aria-label="Navigation principale" className="space-y-0.5">
-      {NAV.map(({ href, label, icon: Icon }) => {
+      {NAV.filter((n) => !n.feature || features[n.feature]).map(({ href, label, icon: Icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link key={href} href={href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors", active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>

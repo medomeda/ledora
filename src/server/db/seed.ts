@@ -7,6 +7,7 @@ import { registerSeeder, type DbState } from "@/server/db/store";
 import { addLeadTag, addNote, updateLeadStatus } from "@/services/lead.service";
 import { completeQuiz, startQuiz, trackVisit } from "@/services/public.service";
 import { createQuiz, publishQuiz, saveQuizConfig, archiveQuiz } from "@/services/quiz.service";
+import { getFeatures } from "@/lib/features";
 import { savePublication } from "@/services/publication.service";
 import type { LeadStatus, QuizConfig } from "@/types/domain";
 
@@ -210,7 +211,7 @@ function seed(s: DbState) {
     { title: "Idée : série « Mon erreur d'argent »", content: "", platform: "facebook", contentPillar: "Inspiration", objective: "Engagement", status: "idea" },
     { title: "Idée : quiz sur l'investissement débutant", content: "", platform: "linkedin", contentPillar: "Lead magnet", objective: "Générer des leads", status: "idea" },
   ];
-  for (const p of pubs) savePublication(s, ctxAt(ago(7)), p);
+  if (getFeatures().publications) for (const p of pubs) savePublication(s, ctxAt(ago(7)), p);
 }
 
 registerSeeder(seed);

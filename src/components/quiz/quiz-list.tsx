@@ -79,7 +79,7 @@ export function QuizList({ rows }: { rows: QuizListRow[] }) {
       <Card className="overflow-hidden">
         {visible.length === 0 ? (
           rows.length === 0 ? (
-            <EmptyState icon={Sparkles} title="Aucun quiz pour l'instant" description="Créez votre premier diagnostic : manuellement, ou en décrivant votre besoin à l'Assistant IA." action={<Button asChild><Link href="/lead-magnets/new"><Plus /> Créer un quiz</Link></Button>} />
+            <EmptyState icon={Sparkles} title="Aucun quiz pour l'instant" description="Créez votre premier diagnostic : en quelques minutes." action={<Button asChild><Link href="/lead-magnets/new"><Plus /> Créer un quiz</Link></Button>} />
           ) : (
             <EmptyState icon={Target} title="Aucun quiz dans cette catégorie" description="Changez de filtre pour retrouver vos autres quiz." />
           )

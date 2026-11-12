@@ -1,5 +1,7 @@
 import { Lightbulb, PenLine, Sparkles, WandSparkles } from "lucide-react";
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { getFeatures } from "@/lib/features";
 import Link from "next/link";
 import { AiQuizGenerator } from "@/components/quiz/ai-generator";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +21,7 @@ export const metadata: Metadata = { title: "Assistant IA" };
 export const dynamic = "force-dynamic";
 
 export default async function AssistantPage() {
+  if (!getFeatures().ai) notFound();
   const user = await requireUser("/assistant");
   const ctx = ctxFor(user.id);
   const { usage, history, business } = read((s) => { const b = getBusiness(s, ctx); return { business: b, usage: getUsage(s, b, ctx.now), history: listGenerations(s, ctx, 5) }; });

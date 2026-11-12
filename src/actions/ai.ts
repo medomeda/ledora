@@ -1,5 +1,6 @@
 "use server";
 import { redirect } from "next/navigation";
+import { getFeatures } from "@/lib/features";
 import { authed, type ActionResult } from "@/actions/_shared";
 import "@/server/bootstrap";
 import { aiAdoptSchema, aiGenerateQuizSchema, aiImproveSchema } from "@/lib/validations";
@@ -12,6 +13,7 @@ import type { QuizConfig } from "@/types/domain";
 
 /** Les appels au fournisseur d'IA partent du serveur uniquement ; aucune donnée de prospect n'est transmise. */
 export async function generateQuizAction(raw: unknown): Promise<ActionResult<{ generationId: string; config: QuizConfig; provider: string }>> {
+  if (!getFeatures().ai) return { ok: false, error: "L'Assistant IA est désactivé." };
   return authed(aiGenerateQuizSchema, raw, async (input, ctx) => {
     const business = read((s) => ai.assertAiQuota(s, ctx));
     const provider = getAiProvider();
@@ -29,12 +31,14 @@ export async function generateQuizAction(raw: unknown): Promise<ActionResult<{ g
 
 /** « L'IA propose, l'utilisateur valide » : adopter une proposition crée un BROUILLON, jamais un quiz publié. */
 export async function adoptGenerationAction(raw: unknown): Promise<ActionResult> {
+  if (!getFeatures().ai) return { ok: false, error: "L'Assistant IA est désactivé." };
   const res = await authed(aiAdoptSchema, raw, (input, ctx) => tx((s) => ai.adoptGeneration(s, ctx, input.generationId).id));
   if (res.ok) redirect(`/lead-magnets/${res.data}`);
   return res as ActionResult;
 }
 
 export async function improveTextAction(raw: unknown): Promise<ActionResult<{ variants: string[] }>> {
+  if (!getFeatures().ai) return { ok: false, error: "L'Assistant IA est désactivé." };
   return authed(aiImproveSchema, raw, async (input, ctx) => {
     const business = read((s) => ai.assertAiQuota(s, ctx));
     const provider = getAiProvider();

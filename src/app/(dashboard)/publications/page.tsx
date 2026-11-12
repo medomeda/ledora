@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { getFeatures } from "@/lib/features";
 import { PublicationsView } from "@/components/shared/publications-view";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireUser } from "@/lib/auth/session";
@@ -12,6 +14,7 @@ export const metadata: Metadata = { title: "Publications" };
 export const dynamic = "force-dynamic";
 
 export default async function PublicationsPage() {
+  if (!getFeatures().publications) notFound();
   const user = await requireUser("/publications");
   const ctx = ctxFor(user.id);
   const { publications, quizzes } = read((s) => ({ publications: listPublications(s, ctx), quizzes: listQuizzes(s, ctx).filter((q) => q.status !== "archived").map((q) => ({ id: q.id, title: q.title })) }));

@@ -2,6 +2,7 @@
 import { Check, Sparkles, X } from "lucide-react";
 import { useState, useTransition } from "react";
 import { improveTextAction } from "@/actions/ai";
+import { useFeatures } from "@/components/layout/features-context";
 import { Button } from "@/components/ui/button";
 import type { ImproveKind } from "@/services/ai/types";
 
@@ -10,6 +11,7 @@ export function ImproveButton({ kind, value, onApply, label = "Améliorer avec l
   const [variants, setVariants] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  if (!useFeatures().ai) return null;
   return (
     <div className="space-y-2">
       <Button type="button" variant="ghost" size="sm" className="-ml-2 h-8 text-muted-foreground" disabled={!value.trim()} loading={pending} onClick={() => start(async () => {

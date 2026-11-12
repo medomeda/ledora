@@ -5,6 +5,7 @@ import { Card, CardBody, CardDescription, CardHeader, CardTitle } from "@/compon
 import { PageHeader } from "@/components/ui/page-header";
 import { PLANS } from "@/lib/constants/plans";
 import { requireUser } from "@/lib/auth/session";
+import { getFeatures } from "@/lib/features";
 import { getUsage } from "@/services/ai.service";
 import { ctxFor } from "@/server/context";
 import "@/server/bootstrap";
@@ -51,7 +52,7 @@ export default async function SettingsPage() {
         <CardBody className="space-y-4">
           <Meter label="Quiz actifs" used={quizzes} limit={plan.maxActiveQuizzes} />
           <Meter label="Participations ce mois-ci" used={subs} limit={plan.maxMonthlySubmissions} />
-          <Meter label="Générations IA ce mois-ci" used={usage.used} limit={usage.limit} />
+          {getFeatures().ai && <Meter label="Générations IA ce mois-ci" used={usage.used} limit={usage.limit} />}
         </CardBody>
       </Card>
       <Card>
