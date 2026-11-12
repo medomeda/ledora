@@ -55,7 +55,7 @@ export function AdminShell({ user, roleLabel, permissions, hasWorkspace, childre
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[248px_1fr]">
       <aside className="sticky top-0 hidden h-dvh flex-col bg-primary px-4 py-5 lg:flex">
-        <div className="mb-8 flex items-center justify-between px-2"><Brand href="/admin" light /><Badge tone="warning">{roleLabel}</Badge></div>
+        <div className="mb-8 px-2"><Brand href="/admin" light /><Badge tone="warning" className="ml-[2.625rem] mt-1">{roleLabel}</Badge></div>
         <Links permissions={permissions} />
         {footer}
       </aside>

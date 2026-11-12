@@ -85,7 +85,7 @@ function seed(s: DbState) {
   // ---- Quiz --------------------------------------------------------------------------------------------------
   const ai = new MockAiProvider();
   const ctxBiz = { name: business.name, activityType: business.activityType, industry: business.industry, description: business.description, offers: business.offers, bookingUrl: business.bookingUrl };
-  const gen = (brief: string, count: number, tone: "professionnel" | "chaleureux" | "dynamique" | "expert"): QuizConfig => ai.buildQuiz({ brief, target: "salariés et indépendants", tone, questionCount: count, business: ctxBiz });
+  const gen = (brief: string, count: number, tone: "professionnel" | "chaleureux" | "dynamique" | "expert", target = "salariés et indépendants"): QuizConfig => ai.buildQuiz({ brief, target, tone, questionCount: count, business: ctxBiz });
 
   const finance = gen("Quiz sur la maturité financière des salariés qui rencontrent des difficultés à gérer leur argent.", 8, "chaleureux");
   finance.title = "Quel est votre niveau de maturité financière ?";
@@ -94,7 +94,7 @@ function seed(s: DbState) {
   quiz1.slug = "maturite-financiere";
   publishQuiz(s, ctxAt(ago(36)), quiz1.id);
 
-  const entre = gen("Quiz pour aider les futurs entrepreneurs à évaluer leur niveau de préparation avant de lancer leur activité.", 6, "dynamique");
+  const entre = gen("Quiz pour aider les futurs entrepreneurs à évaluer leur niveau de préparation avant de lancer leur activité.", 6, "dynamique", "futurs entrepreneurs");
   entre.title = "Quel type d'entrepreneur êtes-vous ?";
   entre.capture.required = false;
   entre.capture.askPhone = true;
@@ -104,12 +104,12 @@ function seed(s: DbState) {
   quiz2.slug = "type-entrepreneur";
   publishQuiz(s, ctxAt(ago(28)), quiz2.id);
 
-  const lead = gen("Quiz sur le profil de leadership des managers qui débutent.", 4, "expert");
+  const lead = gen("Quiz sur le profil de leadership des managers qui débutent.", 4, "expert", "managers débutants");
   lead.title = "Quel est votre profil de leadership ?";
   const quiz3 = createQuiz(s, ctxAt(ago(5)), { title: lead.title, config: lead });
   void quiz3;
 
-  const old = gen("Test budget", 3, "professionnel");
+  const old = gen("Test budget", 3, "professionnel", "salariés");
   old.title = "Test budget 2025 (ancien)";
   const quiz4 = createQuiz(s, ctxAt(ago(35)), { title: old.title, config: old });
   archiveQuiz(s, ctxAt(ago(32)), quiz4.id);

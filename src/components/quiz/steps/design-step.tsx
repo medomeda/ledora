@@ -26,7 +26,7 @@ function ColorField({ label, value, effective, onChange }: { label: string; valu
     <Field label={label}>
       <div className="flex items-center gap-2">
         <input type="color" aria-label={label} value={shown} onChange={(e) => onChange(e.target.value)} className="h-10 w-12 shrink-0 cursor-pointer rounded-lg border border-input bg-card p-1" />
-        <Input aria-label={`${label} (code hexadécimal)`} value={value ?? ""} placeholder="Selon le thème" maxLength={7} onChange={(e) => { const v = e.target.value.trim(); if (v === "") onChange(null); else if (/^#[0-9a-fA-F]{0,6}$/.test(v)) { if (v.length === 7) onChange(v); } }} className="font-mono text-sm" />
+        <Input aria-label={`${label} (code hexadécimal)`} value={value ?? ""} placeholder="Thème" maxLength={7} onChange={(e) => { const v = e.target.value.trim(); if (v === "") onChange(null); else if (/^#[0-9a-fA-F]{0,6}$/.test(v)) { if (v.length === 7) onChange(v); } }} className="font-mono text-sm" />
         {value && <Button type="button" variant="ghost" size="icon-sm" aria-label={`Réinitialiser : ${label}`} onClick={() => onChange(null)}><RotateCcw /></Button>}
       </div>
     </Field>
@@ -113,7 +113,7 @@ export function DesignStep({ config, update, plan, hasLogo }: StepProps) {
         <label className="flex items-start gap-3 text-sm"><Switch className="mt-0.5" checked={free ? true : d.showPoweredBy} disabled={free} onChange={(e) => set({ showPoweredBy: e.target.checked })} /><span><span className="block font-medium">Afficher « Propulsé par Leadora »</span><span className="text-muted-foreground">{free ? "Obligatoire avec l'offre Gratuit. Vous pourrez la retirer avec une offre supérieure." : "Vous pouvez retirer cette mention."}</span></span></label>
       </Section>
 
-      <div className="flex justify-end"><Button variant="ghost" onClick={() => update((c) => void (c.design = undefined))}><RotateCcw /> Réinitialiser le design</Button></div>
+      <div className="flex justify-start sm:justify-end"><Button variant="ghost" onClick={() => update((c) => void (c.design = undefined))}><RotateCcw /> Réinitialiser le design</Button></div>
     </div>
   );
 }

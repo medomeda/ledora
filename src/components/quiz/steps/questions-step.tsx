@@ -136,7 +136,7 @@ const NO_PROFILE = "";
 
 /** Colonnes alignées entre l'en-tête et chaque réponse : texte | profil | points | actions. */
 const gridCols = (points: boolean, profile: boolean) =>
-  cn("sm:grid-cols-[minmax(0,1fr)_6.75rem]", profile && !points && "sm:grid-cols-[minmax(0,1fr)_15rem_6.75rem]", profile && points && "sm:grid-cols-[minmax(0,1fr)_15rem_4.5rem_6.75rem]", !profile && points && "sm:grid-cols-[minmax(0,1fr)_4.5rem_6.75rem]");
+  cn("sm:grid-cols-[minmax(0,1fr)_6.75rem]", profile && !points && "sm:grid-cols-[minmax(0,1fr)_12.5rem_6.75rem]", profile && points && "sm:grid-cols-[minmax(0,1fr)_12.5rem_4.5rem_6.75rem]", !profile && points && "sm:grid-cols-[minmax(0,1fr)_4.5rem_6.75rem]");
 
 function OptionRow({ option, index, count, showGlobal, ranges, profiles, onChange, onMove, onRemove, canRemove }: {
   option: QuizOption; index: number; count: number; showGlobal: boolean; ranges: boolean; profiles: Array<{ id: string; name: string; color: string }>;
