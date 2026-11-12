@@ -88,6 +88,9 @@ export function QuestionsStep({ config, update, goTo }: StepProps) {
 
                 <div>
                   <h3 className="mb-2 text-sm font-semibold">Réponses proposées</h3>
+                  <div className={cn("mb-1 hidden gap-x-2 px-2.5 text-xs text-muted-foreground sm:grid", gridCols(showGlobal, !ranges && profiles.length > 0))} aria-hidden>
+                    <span>Réponse</span>{!ranges && profiles.length > 0 && <span>Profil indiqué</span>}{showGlobal && <span className="text-center">Points</span>}<span className="w-[6.75rem]" />
+                  </div>
                   <ul className="space-y-2">
                     {q.options.map((o, oi) => (
                       <OptionRow key={o.id} option={o} index={oi} count={q.options.length} showGlobal={showGlobal} ranges={ranges}
@@ -133,6 +136,10 @@ function CoverageSummary({ config }: { config: StepProps["config"] }) {
 
 const NO_PROFILE = "";
 
+/** Colonnes alignées entre l'en-tête et chaque réponse : texte | profil | points | actions. */
+const gridCols = (points: boolean, profile: boolean) =>
+  cn("sm:grid-cols-[minmax(0,1fr)_6.75rem]", profile && !points && "sm:grid-cols-[minmax(0,1fr)_15rem_6.75rem]", profile && points && "sm:grid-cols-[minmax(0,1fr)_15rem_4.5rem_6.75rem]", !profile && points && "sm:grid-cols-[minmax(0,1fr)_4.5rem_6.75rem]");
+
 function OptionRow({ option, index, count, showGlobal, ranges, profiles, onChange, onMove, onRemove, canRemove }: {
   option: QuizOption; index: number; count: number; showGlobal: boolean; ranges: boolean; profiles: Array<{ id: string; name: string; color: string }>;
   onChange: (fn: (o: QuizOption) => void) => void; onMove: (delta: number) => void; onRemove: () => void; canRemove: boolean;
@@ -140,30 +147,27 @@ function OptionRow({ option, index, count, showGlobal, ranges, profiles, onChang
   const main = [...option.profilePoints].sort((a, b) => b.points - a.points)[0];
   const current = main && profiles.some((p) => p.id === main.profileId) ? main.profileId : NO_PROFILE;
   const color = profiles.find((p) => p.id === current)?.color;
+  const hasProfile = !ranges && profiles.length > 0;
   return (
-    <li className="grid gap-2 rounded-lg border bg-card p-2.5 sm:grid-cols-[1fr_minmax(0,15rem)_auto] sm:items-center">
-      <Input aria-label={`Réponse ${index + 1}`} value={option.label} maxLength={200} placeholder={`Réponse ${index + 1}`} onChange={(e) => onChange((o) => void (o.label = e.target.value))} />
-      <div className="flex items-center gap-2">
-        {!ranges && profiles.length > 0 && (
-          <div className="relative min-w-0 flex-1">
+    <li className={cn("grid items-center gap-2 rounded-lg border bg-card p-2.5", gridCols(showGlobal, hasProfile))}>
+      <Input aria-label={`Réponse ${index + 1}`} value={option.label} maxLength={200} placeholder={`Réponse ${index + 1}`} className="col-span-full sm:col-span-1" onChange={(e) => onChange((o) => void (o.label = e.target.value))} />
+      <div className={cn("grid items-center gap-2 max-sm:col-span-full", hasProfile && showGlobal ? "max-sm:grid-cols-[minmax(0,1fr)_4.5rem]" : "max-sm:grid-cols-1", "sm:contents")}>
+        {hasProfile && (
+          <div className="relative min-w-0">
             <span className="pointer-events-none absolute left-3 top-1/2 size-2.5 -translate-y-1/2 rounded-full" style={{ background: color ?? "var(--input)" }} />
             <select aria-label={`Profil indiqué par la réponse ${index + 1}`} value={current} onChange={(e) => onChange((o) => {
               const id = e.target.value;
               // Changer de profil remplace l'association ; une pondération existante est conservée si le profil ne change pas.
               o.profilePoints = id === NO_PROFILE ? [] : [{ profileId: id, points: id === main?.profileId ? main.points : 1 }];
-            })} className={cn("h-10 w-full rounded-lg border border-input bg-card pl-8 pr-8 text-sm focus-visible:outline-2 focus-visible:outline-ring", current === NO_PROFILE && "text-muted-foreground")}>
-              <option value={NO_PROFILE}>Indique : aucun profil</option>
-              {profiles.map((p) => <option key={p.id} value={p.id}>Indique : {p.name}</option>)}
+            })} className={cn("h-10 w-full truncate rounded-lg border border-input bg-card pl-8 pr-8 text-sm focus-visible:outline-2 focus-visible:outline-ring", current === NO_PROFILE && "text-muted-foreground")}>
+              <option value={NO_PROFILE}>Aucun profil</option>
+              {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>
         )}
-        {showGlobal && (
-          <label className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">Points
-            <Input type="number" inputMode="numeric" aria-label={`Points de la réponse ${index + 1}`} className="h-10 w-16 px-2 text-center" value={option.points} onChange={(e) => onChange((o) => void (o.points = Math.max(-100, Math.min(100, Math.trunc(Number(e.target.value)) || 0))))} />
-          </label>
-        )}
+        {showGlobal && <Input type="number" inputMode="numeric" aria-label={`Points de la réponse ${index + 1}`} title="Points au score global" className="h-10 px-2 text-center" value={option.points} onChange={(e) => onChange((o) => void (o.points = Math.max(-100, Math.min(100, Math.trunc(Number(e.target.value)) || 0))))} />}
       </div>
-      <div className="flex shrink-0">
+      <div className="flex justify-end max-sm:col-span-full">
         <Button variant="ghost" size="icon-sm" aria-label="Monter la réponse" disabled={index === 0} onClick={() => onMove(-1)}><ArrowUp /></Button>
         <Button variant="ghost" size="icon-sm" aria-label="Descendre la réponse" disabled={index === count - 1} onClick={() => onMove(1)}><ArrowDown /></Button>
         <Button variant="ghost" size="icon-sm" aria-label="Supprimer la réponse" disabled={!canRemove} onClick={onRemove}><Trash2 /></Button>

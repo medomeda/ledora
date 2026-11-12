@@ -43,18 +43,26 @@ export function RangesEditor({ config, update }: Pick<StepProps, "config" | "upd
             </div>
             <div className="mt-1 flex justify-between text-xs tabular-nums text-muted-foreground"><span>0</span><span>{Math.round(max / 2)}</span><span>{max}</span></div>
           </div>
-          <ul className="grid gap-2 sm:grid-cols-2">
-            {config.profiles.map((p, i) => (
-              <li key={p.id} className="flex items-center gap-2 rounded-lg border p-2">
-                <span className="size-3 shrink-0 rounded-full" style={{ background: profileColor(p, i) }} />
-                <span className="min-w-0 flex-1 truncate text-sm">{p.name || "Profil sans nom"}</span>
-                <label className="sr-only" htmlFor={`rmin-${p.id}`}>Score minimum de {p.name}</label>
-                <Input id={`rmin-${p.id}`} type="number" min={0} max={max} className="h-8 w-16 px-2 text-center" value={p.scoreRange?.min ?? ""} placeholder="min" onChange={(e) => update((c) => void (c.profiles[i]!.scoreRange = { min: Math.max(0, Math.trunc(Number(e.target.value)) || 0), max: c.profiles[i]!.scoreRange?.max ?? max }))} />
-                <span className="text-muted-foreground">à</span>
-                <label className="sr-only" htmlFor={`rmax-${p.id}`}>Score maximum de {p.name}</label>
-                <Input id={`rmax-${p.id}`} type="number" min={0} max={max} className="h-8 w-16 px-2 text-center" value={p.scoreRange?.max ?? ""} placeholder="max" onChange={(e) => update((c) => void (c.profiles[i]!.scoreRange = { min: c.profiles[i]!.scoreRange?.min ?? 0, max: Math.max(0, Math.trunc(Number(e.target.value)) || 0) }))} />
-              </li>
-            ))}
+          <ul className="divide-y rounded-xl border">
+            {config.profiles.map((p, i) => {
+              const r = p.scoreRange;
+              const valid = !!r && r.min <= r.max;
+              return (
+                <li key={p.id} className="grid items-center gap-x-4 gap-y-2 p-3 sm:grid-cols-[minmax(0,12rem)_auto_minmax(0,1fr)]">
+                  <div className="flex min-w-0 items-center gap-2"><span className="size-3 shrink-0 rounded-full" style={{ background: profileColor(p, i) }} /><span className="truncate text-sm font-medium" title={p.name}>{p.name || "Profil sans nom"}</span></div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <label htmlFor={`rmin-${p.id}`} className="text-muted-foreground">de</label>
+                    <Input id={`rmin-${p.id}`} type="number" min={0} max={max} className="h-9 w-[4.5rem] px-2 text-center" value={r?.min ?? ""} placeholder="min" aria-label={`Score minimum de ${p.name || "ce profil"}`} onChange={(e) => update((c) => void (c.profiles[i]!.scoreRange = { min: Math.max(0, Math.trunc(Number(e.target.value)) || 0), max: c.profiles[i]!.scoreRange?.max ?? max }))} />
+                    <label htmlFor={`rmax-${p.id}`} className="text-muted-foreground">à</label>
+                    <Input id={`rmax-${p.id}`} type="number" min={0} max={max} className="h-9 w-[4.5rem] px-2 text-center" value={r?.max ?? ""} placeholder="max" aria-label={`Score maximum de ${p.name || "ce profil"}`} onChange={(e) => update((c) => void (c.profiles[i]!.scoreRange = { min: c.profiles[i]!.scoreRange?.min ?? 0, max: Math.max(0, Math.trunc(Number(e.target.value)) || 0) }))} />
+                    <span className="text-xs text-muted-foreground">points</span>
+                  </div>
+                  <div className="relative hidden h-2 rounded-full bg-muted sm:block" aria-hidden>
+                    {valid && <div className="absolute inset-y-0 rounded-full" style={{ left: `${(Math.max(0, r.min) / total) * 100}%`, width: `${((Math.min(max, r.max) - Math.max(0, r.min) + 1) / total) * 100}%`, background: profileColor(p, i) }} />}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
           {ok ? <p className="flex items-center gap-2 text-sm text-success"><CheckCircle2 className="size-4" /> Tous les scores de 0 à {max} mènent à un profil.</p> : (
             <div className="space-y-1 text-sm text-accent-soft-foreground">
