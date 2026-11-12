@@ -1,6 +1,7 @@
 import { allPlans, planDef, PLAN_IDS } from "@/lib/constants/plans";
 import { isoNow, type Ctx } from "@/server/context";
 import type { DbState } from "@/server/db/store";
+import { can, isStaff, type Permission } from "@/lib/permissions/staff";
 import { forbidden, invalidState, notFound, validation } from "@/server/errors";
 import { newId, newToken, sha256 } from "@/server/ids";
 import type { AuditAction, AuditLog, Business, BusinessStatus, PlanId, PlanOverride, PlatformSettings, Quiz, QuizStatus, User } from "@/types/domain";
@@ -10,13 +11,13 @@ import type { AuditAction, AuditLog, Business, BusinessStatus, PlanId, PlanOverr
  * seulement dans la page) : un oubli côté interface ne peut pas ouvrir l'accès. Toute modification est consignée
  * dans le journal d'audit, dans la même transaction que l'action.
  */
-export function requireAdmin(s: Readonly<DbState>, ctx: Ctx): User {
+export function requireStaff(s: Readonly<DbState>, ctx: Ctx, permission: Permission = "view"): User {
   const user = s.users.find((u) => u.id === ctx.userId);
-  if (!user || user.role !== "admin") throw forbidden("Accès réservé aux administrateurs.");
+  if (!user || user.disabledAt || !can(user.role, permission)) throw forbidden(user && isStaff(user.role) ? "Votre rôle ne permet pas cette action." : "Accès réservé à l'équipe de la plateforme.");
   return user;
 }
 
-function record(s: DbState, ctx: Ctx, admin: User, action: AuditAction, target: { type: AuditLog["targetType"]; id: string; label: string }, details = "") {
+export function recordAudit(s: DbState, ctx: Ctx, admin: User, action: AuditAction, target: { type: AuditLog["targetType"]; id: string; label: string }, details = "") {
   s.auditLogs.push({ id: newId(), actorId: admin.id, actorEmail: admin.email, action, targetType: target.type, targetId: target.id, targetLabel: target.label, details, createdAt: isoNow(ctx) });
 }
 
@@ -98,7 +99,7 @@ function paginate<T>(rows: T[], page = 1, pageSize = 15): Page<T> {
 }
 
 export function listAccounts(s: Readonly<DbState>, ctx: Ctx, f: AccountFilters = {}): Page<AccountRow> {
-  requireAdmin(s, ctx);
+  requireStaff(s, ctx, "view");
   const q = f.q?.trim().toLowerCase();
   let rows = s.businesses.map((b) => accountRow(s, b, ctx.now));
   if (q) rows = rows.filter((r) => [r.name, r.ownerName, r.email].some((v) => v.toLowerCase().includes(q)));
@@ -120,7 +121,7 @@ export interface AccountDetail {
 }
 
 export function getAccount(s: Readonly<DbState>, ctx: Ctx, businessId: string): AccountDetail {
-  requireAdmin(s, ctx);
+  requireStaff(s, ctx, "view");
   const business = businessOrThrow(s, businessId);
   const owner = s.users.find((u) => u.id === business.ownerId)!;
   const start = monthStart(ctx.now);
@@ -143,19 +144,19 @@ export function getAccount(s: Readonly<DbState>, ctx: Ctx, businessId: string): 
 const label = (b: Business) => b.name;
 
 export function setAccountPlan(s: DbState, ctx: Ctx, businessId: string, plan: PlanId): Business {
-  const admin = requireAdmin(s, ctx);
+  const admin = requireStaff(s, ctx, "account.billing");
   if (!PLAN_IDS.includes(plan)) throw validation("Offre inconnue.");
   const b = businessOrThrow(s, businessId);
   if (b.plan === plan) return b;
   const from = b.plan;
   b.plan = plan;
   b.updatedAt = isoNow(ctx);
-  record(s, ctx, admin, "account.plan_changed", { type: "account", id: b.id, label: label(b) }, `${planDef(s, from).name} → ${planDef(s, plan).name}`);
+  recordAudit(s, ctx, admin, "account.plan_changed", { type: "account", id: b.id, label: label(b) }, `${planDef(s, from).name} → ${planDef(s, plan).name}`);
   return b;
 }
 
 export function suspendAccount(s: DbState, ctx: Ctx, businessId: string, reason: string): Business {
-  const admin = requireAdmin(s, ctx);
+  const admin = requireStaff(s, ctx, "account.support");
   const b = businessOrThrow(s, businessId);
   const trimmed = reason.trim();
   if (trimmed.length < 3) throw validation("Indiquez le motif de la suspension.", { reason: "Motif obligatoire." });
@@ -165,61 +166,50 @@ export function suspendAccount(s: DbState, ctx: Ctx, businessId: string, reason:
   b.suspendedAt = isoNow(ctx);
   b.suspensionReason = trimmed.slice(0, 300);
   b.updatedAt = b.suspendedAt;
-  record(s, ctx, admin, "account.suspended", { type: "account", id: b.id, label: label(b) }, trimmed.slice(0, 300));
+  recordAudit(s, ctx, admin, "account.suspended", { type: "account", id: b.id, label: label(b) }, trimmed.slice(0, 300));
   return b;
 }
 
 export function reactivateAccount(s: DbState, ctx: Ctx, businessId: string): Business {
-  const admin = requireAdmin(s, ctx);
+  const admin = requireStaff(s, ctx, "account.support");
   const b = businessOrThrow(s, businessId);
   if (b.status === "active") return b;
   b.status = "active";
   b.suspendedAt = null;
   b.suspensionReason = "";
   b.updatedAt = isoNow(ctx);
-  record(s, ctx, admin, "account.reactivated", { type: "account", id: b.id, label: label(b) });
+  recordAudit(s, ctx, admin, "account.reactivated", { type: "account", id: b.id, label: label(b) });
   return b;
 }
 
 export function markEmailVerified(s: DbState, ctx: Ctx, businessId: string): void {
-  const admin = requireAdmin(s, ctx);
+  const admin = requireStaff(s, ctx, "account.support");
   const b = businessOrThrow(s, businessId);
   const owner = s.users.find((u) => u.id === b.ownerId)!;
   if (owner.emailVerifiedAt) return;
   owner.emailVerifiedAt = isoNow(ctx);
-  record(s, ctx, admin, "account.email_verified", { type: "account", id: b.id, label: label(b) });
+  recordAudit(s, ctx, admin, "account.email_verified", { type: "account", id: b.id, label: label(b) });
 }
 
 /** Émet un lien de réinitialisation valable 1 h (affiché à l'administrateur : aucun email n'est envoyé en simulation). */
 export function issueResetLink(s: DbState, ctx: Ctx, businessId: string): string {
-  const admin = requireAdmin(s, ctx);
+  const admin = requireStaff(s, ctx, "account.support");
   const b = businessOrThrow(s, businessId);
   const token = newToken();
   s.tokens = s.tokens.filter((t) => !(t.userId === b.ownerId && t.kind === "reset_password"));
   s.tokens.push({ tokenHash: sha256(token), userId: b.ownerId, kind: "reset_password", expiresAt: new Date(ctx.now.getTime() + 3600_000).toISOString(), usedAt: null });
-  record(s, ctx, admin, "account.reset_link_issued", { type: "account", id: b.id, label: label(b) });
+  recordAudit(s, ctx, admin, "account.reset_link_issued", { type: "account", id: b.id, label: label(b) });
   return `/reset-password/${token}`;
 }
 
 export function revokeSessions(s: DbState, ctx: Ctx, businessId: string): number {
-  const admin = requireAdmin(s, ctx);
+  const admin = requireStaff(s, ctx, "account.support");
   const b = businessOrThrow(s, businessId);
   const before = s.sessions.length;
   s.sessions = s.sessions.filter((x) => x.userId !== b.ownerId);
   const n = before - s.sessions.length;
-  record(s, ctx, admin, "account.sessions_revoked", { type: "account", id: b.id, label: label(b) }, `${n} session${n > 1 ? "s" : ""}`);
+  recordAudit(s, ctx, admin, "account.sessions_revoked", { type: "account", id: b.id, label: label(b) }, `${n} session${n > 1 ? "s" : ""}`);
   return n;
-}
-
-export function setUserRole(s: DbState, ctx: Ctx, userId: string, role: "user" | "admin"): void {
-  const admin = requireAdmin(s, ctx);
-  const user = s.users.find((u) => u.id === userId);
-  if (!user) throw notFound("Utilisateur introuvable.");
-  if (user.id === admin.id) throw invalidState("Vous ne pouvez pas modifier votre propre rôle.");
-  if (user.role === role) return;
-  user.role = role;
-  const biz = s.businesses.find((b) => b.ownerId === user.id);
-  record(s, ctx, admin, "account.role_changed", { type: "account", id: biz?.id ?? user.id, label: biz?.name ?? user.email }, role === "admin" ? "Promu administrateur" : "Rôle administrateur retiré");
 }
 
 export interface DeletionPreview {
@@ -229,18 +219,17 @@ export interface DeletionPreview {
 }
 
 export function previewAccountDeletion(s: Readonly<DbState>, ctx: Ctx, businessId: string): DeletionPreview {
-  requireAdmin(s, ctx);
+  requireStaff(s, ctx, "account.delete");
   const b = businessOrThrow(s, businessId);
   return { quizzes: s.quizzes.filter((q) => q.businessId === b.id).length, submissions: s.quizSubmissions.filter((x) => x.businessId === b.id).length, leads: s.leads.filter((l) => l.businessId === b.id).length };
 }
 
 /** Suppression définitive et complète d'un compte client (droit à l'effacement). L'email saisi doit correspondre. */
 export function deleteAccount(s: DbState, ctx: Ctx, businessId: string, confirmEmail: string): void {
-  const admin = requireAdmin(s, ctx);
+  const admin = requireStaff(s, ctx, "account.delete");
   const b = businessOrThrow(s, businessId);
   const owner = s.users.find((u) => u.id === b.ownerId)!;
   if (owner.id === admin.id) throw invalidState("Vous ne pouvez pas supprimer votre propre compte.");
-  if (owner.role === "admin") throw invalidState("Retirez d'abord le rôle administrateur de cet utilisateur.");
   if (confirmEmail.trim().toLowerCase() !== owner.email) throw validation("L'adresse saisie ne correspond pas.", { confirm: "Adresse différente." });
   const quizIds = new Set(s.quizzes.filter((q) => q.businessId === b.id).map((q) => q.id));
   const leadIds = new Set(s.leads.filter((l) => l.businessId === b.id).map((l) => l.id));
@@ -262,7 +251,7 @@ export function deleteAccount(s: DbState, ctx: Ctx, businessId: string, confirmE
   s.tokens = s.tokens.filter((t) => t.userId !== owner.id);
   s.credentials = s.credentials.filter((c) => c.userId !== owner.id);
   s.users = s.users.filter((u) => u.id !== owner.id);
-  record(s, ctx, admin, "account.deleted", { type: "account", id: b.id, label: label(b) }, owner.email);
+  recordAudit(s, ctx, admin, "account.deleted", { type: "account", id: b.id, label: label(b) }, owner.email);
 }
 
 // ---- Quiz (modération) ------------------------------------------------------------------------------------------
@@ -282,7 +271,7 @@ export interface AdminQuizRow {
 }
 
 export function listAllQuizzes(s: Readonly<DbState>, ctx: Ctx, f: { q?: string; status?: QuizStatus | ""; page?: number; pageSize?: number } = {}): Page<AdminQuizRow> {
-  requireAdmin(s, ctx);
+  requireStaff(s, ctx, "view");
   const q = f.q?.trim().toLowerCase();
   let rows: AdminQuizRow[] = s.quizzes.map((quiz) => {
     const b = s.businesses.find((x) => x.id === quiz.businessId)!;
@@ -303,7 +292,7 @@ function quizOrThrow(s: Readonly<DbState>, quizId: string): Quiz {
 
 /** Modération : coupe un quiz public (contenu inapproprié, abus). Les données du client sont conservées. */
 export function moderateQuiz(s: DbState, ctx: Ctx, quizId: string, action: "unpublish" | "archive", reason: string): Quiz {
-  const admin = requireAdmin(s, ctx);
+  const admin = requireStaff(s, ctx, "quiz.moderate");
   const quiz = quizOrThrow(s, quizId);
   const trimmed = reason.trim();
   if (trimmed.length < 3) throw validation("Indiquez le motif de la modération.", { reason: "Motif obligatoire." });
@@ -317,7 +306,7 @@ export function moderateQuiz(s: DbState, ctx: Ctx, quizId: string, action: "unpu
     quiz.archivedAt = at;
   }
   quiz.updatedAt = at;
-  record(s, ctx, admin, action === "unpublish" ? "quiz.unpublished" : "quiz.archived", { type: "quiz", id: quiz.id, label: quiz.config.title }, trimmed.slice(0, 300));
+  recordAudit(s, ctx, admin, action === "unpublish" ? "quiz.unpublished" : "quiz.archived", { type: "quiz", id: quiz.id, label: quiz.config.title }, trimmed.slice(0, 300));
   return quiz;
 }
 
@@ -330,65 +319,120 @@ export interface WatchItem {
   tone: "warning" | "danger" | "info";
 }
 
+export type RangeKey = "7" | "30" | "90" | "all" | "custom";
+
+export interface Range {
+  key: RangeKey;
+  from: Date;
+  to: Date;
+  label: string;
+  /** Période précédente de même durée (absente pour « tout »). */
+  previous: { from: Date; to: Date } | null;
+}
+
+const DAY = 86400000;
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+const parseDay = (v?: string) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(new Date(`${v}T00:00:00`).getTime()) ? new Date(`${v}T00:00:00`) : null);
+const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const fmt = (d: Date) => d.toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
+
+/** Période d'analyse : 7, 30 ou 90 derniers jours, tout l'historique, ou une période personnalisée (dates incluses). Toute valeur invalide retombe sur 30 jours. */
+export function resolveRange(s: Readonly<DbState>, input: { range?: string; from?: string; to?: string }, now = new Date()): Range {
+  const today = endOfDay(now);
+  const lastDays = (n: number): Range => {
+    const from = startOfDay(new Date(now.getTime() - (n - 1) * DAY));
+    return { key: String(n) as RangeKey, from, to: today, label: `${n} derniers jours`, previous: { from: new Date(from.getTime() - n * DAY), to: new Date(from.getTime() - 1) } };
+  };
+  const key = input.range;
+  if (key === "7" || key === "30" || key === "90") return lastDays(Number(key));
+  if (key === "all") {
+    const dates = [...s.businesses.map((b) => b.createdAt), ...s.quizSubmissions.map((x) => x.startedAt)].sort();
+    const first = dates[0] ? startOfDay(new Date(dates[0])) : startOfDay(now);
+    return { key: "all", from: first, to: today, label: "Tout l'historique", previous: null };
+  }
+  const f = parseDay(input.from);
+  const t = parseDay(input.to);
+  if (key === "custom" || f || t) {
+    if (f || t) {
+      let from = f ?? new Date(2020, 0, 1);
+      let to = endOfDay(t ?? now);
+      if (to > today) to = today;
+      if (from > to) from = startOfDay(to);
+      const span = to.getTime() - from.getTime() + 1;
+      return { key: "custom", from, to, label: `Du ${fmt(from)} au ${fmt(to)}`, previous: { from: new Date(from.getTime() - span), to: new Date(from.getTime() - 1) } };
+    }
+  }
+  return lastDays(30);
+}
+
 export interface Overview {
-  kpis: { accounts: number; newAccounts: number; previousNewAccounts: number; activeAccounts: number; publishedQuizzes: number; submissions: number; leads: number; aiGenerations: number; suspended: number };
+  range: { key: RangeKey; label: string; /** Jours locaux (AAAA-MM-JJ). */ fromDay: string; toDay: string; hasPrevious: boolean };
+  kpis: { accounts: number; newAccounts: number; previousNewAccounts: number | null; activeAccounts: number; publishedQuizzes: number; submissions: number; previousSubmissions: number | null; leads: number; aiGenerations: number; suspended: number };
   series: Array<{ date: string; signups: number; submissions: number }>;
+  bucketDays: number;
   plans: Array<{ plan: PlanId; name: string; count: number }>;
   watch: WatchItem[];
   recent: AuditLog[];
 }
 
-export function getOverview(s: Readonly<DbState>, ctx: Ctx, days = 30): Overview {
-  requireAdmin(s, ctx);
+export function getOverview(s: Readonly<DbState>, ctx: Ctx, range?: Range): Overview {
+  requireStaff(s, ctx, "view");
   const now = ctx.now;
-  const since = new Date(now.getTime() - days * 86400000).toISOString();
-  const before = new Date(now.getTime() - 2 * days * 86400000).toISOString();
-  const subs = s.quizSubmissions.filter((x) => x.startedAt >= since);
+  const r = range ?? resolveRange(s, { range: "30" }, now);
+  const from = r.from.toISOString();
+  const to = r.to.toISOString();
+  const inRange = (iso: string) => iso >= from && iso <= to;
+  const inPrev = (iso: string) => !!r.previous && iso >= r.previous.from.toISOString() && iso <= r.previous.to.toISOString();
+  const subs = s.quizSubmissions.filter((x) => inRange(x.startedAt));
   const active = new Set(subs.map((x) => x.businessId));
 
-  const series: Overview["series"] = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(now.getTime() - i * 86400000).toISOString().slice(0, 10);
-    series.push({ date: d, signups: 0, submissions: 0 });
-  }
-  const idx = new Map(series.map((p, i) => [p.date, i]));
-  for (const b of s.businesses) { const i = idx.get(dayKey(b.createdAt)); if (i !== undefined) series[i]!.signups++; }
-  for (const x of subs) { const i = idx.get(dayKey(x.startedAt)); if (i !== undefined) series[i]!.submissions++; }
+  // Courbe : un point par jour jusqu'à ~3 mois, puis par semaine, puis par période de 30 jours (lisibilité sur « tout »).
+  const totalDays = Math.max(1, Math.round((startOfDay(r.to).getTime() - startOfDay(r.from).getTime()) / DAY) + 1);
+  const bucketDays = totalDays <= 92 ? 1 : totalDays <= 400 ? 7 : 30;
+  const buckets = Math.ceil(totalDays / bucketDays);
+  const series: Overview["series"] = Array.from({ length: buckets }, (_, i) => ({ date: ymd(new Date(r.from.getFullYear(), r.from.getMonth(), r.from.getDate() + i * bucketDays)), signups: 0, submissions: 0 }));
+  const indexOf = (iso: string) => Math.min(buckets - 1, Math.floor((startOfDay(new Date(iso)).getTime() - startOfDay(r.from).getTime()) / (bucketDays * DAY)));
+  for (const b of s.businesses) if (inRange(b.createdAt)) series[indexOf(b.createdAt)]!.signups++;
+  for (const x of subs) series[indexOf(x.startedAt)]!.submissions++;
 
-  const start = monthStart(now);
   const watch: WatchItem[] = [];
   for (const b of s.businesses) {
     const row = accountRow(s, b, now);
     if (b.status === "suspended") watch.push({ businessId: b.id, name: b.name, reason: `Suspendu : ${b.suspensionReason || "sans motif"}`, tone: "danger" });
     else if (row.submissionsLimit !== null && pct(row.submissionsMonth, row.submissionsLimit) >= 0.8) watch.push({ businessId: b.id, name: b.name, reason: `${row.submissionsMonth}/${row.submissionsLimit} participations ce mois-ci : candidat à une offre supérieure`, tone: "warning" });
-    else if (!row.emailVerified && now.getTime() - new Date(b.createdAt).getTime() > 7 * 86400000) watch.push({ businessId: b.id, name: b.name, reason: "Email non confirmé depuis plus de 7 jours", tone: "info" });
+    else if (!row.emailVerified && now.getTime() - new Date(b.createdAt).getTime() > 7 * DAY) watch.push({ businessId: b.id, name: b.name, reason: "Email non confirmé depuis plus de 7 jours", tone: "info" });
   }
 
   return {
+    range: { key: r.key, label: r.label, fromDay: ymd(r.from), toDay: ymd(r.to), hasPrevious: !!r.previous },
     kpis: {
-      accounts: s.businesses.length,
-      newAccounts: s.businesses.filter((b) => b.createdAt >= since).length,
-      previousNewAccounts: s.businesses.filter((b) => b.createdAt >= before && b.createdAt < since).length,
+      accounts: s.businesses.filter((b) => b.createdAt <= to).length,
+      newAccounts: s.businesses.filter((b) => inRange(b.createdAt)).length,
+      previousNewAccounts: r.previous ? s.businesses.filter((b) => inPrev(b.createdAt)).length : null,
       activeAccounts: active.size,
       publishedQuizzes: s.quizzes.filter((q) => q.status === "published").length,
       submissions: subs.length,
-      leads: s.leads.length,
-      aiGenerations: s.aiGenerations.filter((g) => g.createdAt >= start && g.status === "success").length,
+      previousSubmissions: r.previous ? s.quizSubmissions.filter((x) => inPrev(x.startedAt)).length : null,
+      leads: s.leads.filter((l) => inRange(l.createdAt)).length,
+      aiGenerations: s.aiGenerations.filter((g) => inRange(g.createdAt) && g.status === "success").length,
       suspended: s.businesses.filter((b) => b.status === "suspended").length,
     },
     series,
+    bucketDays,
     plans: allPlans(s).map((p) => ({ plan: p.id, name: p.name, count: s.businesses.filter((b) => b.plan === p.id).length })),
     watch: watch.slice(0, 8),
-    recent: [...s.auditLogs].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 6),
+    recent: [...s.auditLogs].reverse().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 6),
   };
 }
 
 // ---- Journal d'audit --------------------------------------------------------------------------------------------
 
 export function listAudit(s: Readonly<DbState>, ctx: Ctx, f: { action?: string; q?: string; page?: number; pageSize?: number } = {}): Page<AuditLog> {
-  requireAdmin(s, ctx);
+  requireStaff(s, ctx, "view");
   const q = f.q?.trim().toLowerCase();
-  let rows = [...s.auditLogs];
+  // Inversé avant le tri (stable) : à date égale, l'événement le plus récent passe en premier.
+  let rows = [...s.auditLogs].reverse();
   if (f.action) rows = rows.filter((l) => l.action.startsWith(f.action!));
   if (q) rows = rows.filter((l) => [l.targetLabel, l.actorEmail, l.details].some((v) => v.toLowerCase().includes(q)));
   rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -398,19 +442,19 @@ export function listAudit(s: Readonly<DbState>, ctx: Ctx, f: { action?: string; 
 // ---- Réglages et offres -----------------------------------------------------------------------------------------
 
 export function getPlatformSettings(s: Readonly<DbState>, ctx: Ctx): PlatformSettings {
-  requireAdmin(s, ctx);
+  requireStaff(s, ctx, "settings.manage");
   return structuredClone(s.settings);
 }
 
 export function updatePlatformSettings(s: DbState, ctx: Ctx, input: { registrationsOpen: boolean; announcement: string }): PlatformSettings {
-  const admin = requireAdmin(s, ctx);
+  const admin = requireStaff(s, ctx, "settings.manage");
   const changes: string[] = [];
   if (s.settings.registrationsOpen !== input.registrationsOpen) changes.push(input.registrationsOpen ? "Inscriptions ouvertes" : "Inscriptions fermées");
   const announcement = input.announcement.trim().slice(0, 240);
   if (s.settings.announcement !== announcement) changes.push(announcement ? "Annonce modifiée" : "Annonce retirée");
   s.settings.registrationsOpen = input.registrationsOpen;
   s.settings.announcement = announcement;
-  if (changes.length) record(s, ctx, admin, "settings.updated", { type: "settings", id: "platform", label: "Réglages de la plateforme" }, changes.join(" · "));
+  if (changes.length) recordAudit(s, ctx, admin, "settings.updated", { type: "settings", id: "platform", label: "Réglages de la plateforme" }, changes.join(" · "));
   return s.settings;
 }
 
@@ -421,7 +465,7 @@ const quota = (v: number | null | undefined, field: string): number | null => {
 };
 
 export function updatePlan(s: DbState, ctx: Ctx, plan: PlanId, input: { maxActiveQuizzes: number | null; maxMonthlySubmissions: number | null; maxMonthlyAiGenerations: number | null; priceLabel: string }): PlanOverride {
-  const admin = requireAdmin(s, ctx);
+  const admin = requireStaff(s, ctx, "plans.configure");
   if (!PLAN_IDS.includes(plan)) throw validation("Offre inconnue.");
   const priceLabel = input.priceLabel.trim();
   if (!priceLabel || priceLabel.length > 40) throw validation("Le prix affiché est obligatoire (40 caractères maximum).", { priceLabel: "Texte de prix obligatoire." });
@@ -429,13 +473,13 @@ export function updatePlan(s: DbState, ctx: Ctx, plan: PlanId, input: { maxActiv
   const prev = planDef(s, plan);
   s.settings.planOverrides[plan] = next;
   const diff = (["maxActiveQuizzes", "maxMonthlySubmissions", "maxMonthlyAiGenerations", "priceLabel"] as const).filter((k) => prev[k] !== next[k]).map((k) => `${k} : ${prev[k] ?? "illimité"} → ${next[k] ?? "illimité"}`);
-  if (diff.length) record(s, ctx, admin, "plan.updated", { type: "plan", id: plan, label: prev.name }, diff.join(" · "));
+  if (diff.length) recordAudit(s, ctx, admin, "plan.updated", { type: "plan", id: plan, label: prev.name }, diff.join(" · "));
   return next;
 }
 
 export function resetPlan(s: DbState, ctx: Ctx, plan: PlanId): void {
-  const admin = requireAdmin(s, ctx);
+  const admin = requireStaff(s, ctx, "plans.configure");
   if (!s.settings.planOverrides[plan]) return;
   delete s.settings.planOverrides[plan];
-  record(s, ctx, admin, "plan.updated", { type: "plan", id: plan, label: planDef(s, plan).name }, "Valeurs par défaut rétablies");
+  recordAudit(s, ctx, admin, "plan.updated", { type: "plan", id: plan, label: planDef(s, plan).name }, "Valeurs par défaut rétablies");
 }

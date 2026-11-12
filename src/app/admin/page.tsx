@@ -2,41 +2,48 @@ import { AlertTriangle, ArrowRight, ShieldAlert } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Legend, TrendChart } from "@/components/analytics/charts";
+import { PeriodFilter } from "@/components/admin/period-filter";
 import { KpiStrip } from "@/components/analytics/kpi";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { requireAdminUser } from "@/lib/auth/session";
+import { requireStaffUser } from "@/lib/auth/session";
 import { AUDIT_ACTION_LABELS } from "@/lib/constants/labels";
 import { fmtRelative } from "@/lib/utils/dates";
 import { ctxFor } from "@/server/context";
 import "@/server/bootstrap";
 import { read } from "@/server/db/store";
-import { getOverview } from "@/services/admin.service";
+import { getOverview, resolveRange } from "@/services/admin.service";
 
 export const metadata: Metadata = { title: { absolute: "Administration · Leadora" } };
 
-export default async function AdminHome() {
-  const user = await requireAdminUser();
-  const o = read((s) => getOverview(s, ctxFor(user.id)));
+type SP = Record<string, string | undefined>;
+
+const trend = (now: number, before: number | null) => (before === null ? undefined : `${now >= before ? "+" : "−"}${Math.abs(now - before)} vs période précédente`);
+
+export default async function AdminHome({ searchParams }: { searchParams: Promise<SP> }) {
+  const sp = await searchParams;
+  const user = await requireStaffUser();
+  const ctx = ctxFor(user.id);
+  const o = read((s) => getOverview(s, ctx, resolveRange(s, { range: sp.range, from: sp.from, to: sp.to }, ctx.now)));
   const k = o.kpis;
-  const delta = k.newAccounts - k.previousNewAccounts;
+  const unit = o.bucketDays === 1 ? "par jour" : o.bucketDays === 7 ? "par semaine" : "par mois";
   const totalAccounts = Math.max(1, o.plans.reduce((a, p) => a + p.count, 0));
   return (
     <div className="space-y-6">
-      <PageHeader title="Vue d'ensemble" description="L'état de la plateforme sur les 30 derniers jours." />
+      <PageHeader title="Vue d'ensemble" description={`${o.range.label} — l'état de la plateforme.`} actions={<PeriodFilter active={o.range.key} from={o.range.fromDay} to={o.range.toDay} />} />
       <KpiStrip items={[
-        { label: "Comptes clients", value: k.accounts, hint: k.suspended ? `dont ${k.suspended} suspendu${k.suspended > 1 ? "s" : ""}` : undefined },
-        { label: "Nouveaux comptes", value: k.newAccounts, hint: `${delta >= 0 ? "+" : "−"}${Math.abs(delta)} vs période précédente` },
+        { label: "Comptes clients", value: k.accounts, hint: k.suspended ? `dont ${k.suspended} suspendu${k.suspended > 1 ? "s" : ""} (actuel)` : "à la fin de la période" },
+        { label: "Nouveaux comptes", value: k.newAccounts, hint: trend(k.newAccounts, k.previousNewAccounts) },
         { label: "Comptes actifs", value: k.activeAccounts, hint: "au moins une participation" },
-        { label: "Quiz publiés", value: k.publishedQuizzes },
-        { label: "Participations", value: k.submissions },
-        { label: "Prospects collectés", value: k.leads, hint: `${k.aiGenerations} générations IA ce mois-ci` },
+        { label: "Quiz publiés", value: k.publishedQuizzes, hint: "actuellement" },
+        { label: "Participations", value: k.submissions, hint: trend(k.submissions, k.previousSubmissions) },
+        { label: "Prospects collectés", value: k.leads, hint: `${k.aiGenerations} générations IA sur la période` },
       ]} />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <CardHeader><div><CardTitle>Croissance</CardTitle><CardDescription>Inscriptions et participations par jour.</CardDescription></div><Legend items={[{ label: "Participations", color: "#151a2d" }, { label: "Inscriptions", color: "#f5a524" }]} /></CardHeader>
+          <CardHeader><div><CardTitle>Croissance</CardTitle><CardDescription>Inscriptions et participations {unit}.</CardDescription></div><Legend items={[{ label: "Participations", color: "#151a2d" }, { label: "Inscriptions", color: "#f5a524" }]} /></CardHeader>
           <CardBody><TrendChart data={o.series} series={[{ key: "submissions", label: "Participations", color: "#151a2d" }, { key: "signups", label: "Inscriptions", color: "#f5a524" }]} /></CardBody>
         </Card>
         <Card>

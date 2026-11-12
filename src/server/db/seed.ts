@@ -234,6 +234,18 @@ function seedPlatform(s: DbState, now: Date) {
   admin.user.role = "admin";
   admin.user.emailVerifiedAt = admin.user.createdAt;
   s.businesses = s.businesses.filter((b) => b.ownerId !== admin.user.id);
+  // Équipe : un support et un profil en lecture seule (mêmes identifiants), et une invitation en attente.
+  for (const [first, last, email, role, loginDays, age] of [["Awa", "Support", "support@leadora.app", "support", 1, 80], ["Marc", "Lecture", "lecture@leadora.app", "readonly", 6, 40]] as const) {
+    const { user: member } = register(s, { firstName: first, lastName: last, email, password: DEMO_PASSWORD }, new Date(now.getTime() - age * day));
+    member.role = role;
+    member.emailVerifiedAt = member.createdAt;
+    member.lastLoginAt = new Date(now.getTime() - loginDays * day).toISOString();
+    s.businesses = s.businesses.filter((b) => b.ownerId !== member.id);
+  }
+  const invited = register(s, { firstName: "Nadia", lastName: "Invitée", email: "nadia@leadora.app", password: "Invitation1" }, new Date(now.getTime() - 2 * day));
+  invited.user.role = "support";
+  s.credentials.find((c) => c.userId === invited.user.id)!.passwordHash = hashPassword(`${Math.random()}-inutilisable`);
+  s.businesses = s.businesses.filter((b) => b.ownerId !== invited.user.id);
 
   const ai = new MockAiProvider();
   type Spec = { first: string; last: string; email: string; brand: string; type: Business["activityType"]; industry: string; plan: Business["plan"]; age: number; verified: boolean; quizzes: number; people: number; login: number | null };

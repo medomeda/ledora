@@ -10,13 +10,15 @@ export type ISODateTime = string;
 
 export type PlanId = "free" | "starter" | "pro";
 
-export type UserRole = "user" | "admin";
+/** « user » : client de la plateforme. Les autres rôles forment l'équipe (voir lib/permissions/staff.ts). */
+export type UserRole = "user" | "admin" | "support" | "readonly";
 
 export interface User {
   id: string;
   email: string;
-  /** « admin » : accès au back-office de la plateforme (/admin). Les comptes clients sont « user ». */
   role: UserRole;
+  /** Accès désactivé par un administrateur (collaborateur de l'équipe) : connexion refusée, sessions fermées. */
+  disabledAt?: ISODateTime | null;
   lastLoginAt: ISODateTime | null;
   firstName: string;
   lastName: string;
@@ -322,7 +324,7 @@ export interface AuditLog {
   actorId: string;
   actorEmail: string;
   action: AuditAction;
-  targetType: "account" | "quiz" | "plan" | "settings";
+  targetType: "account" | "quiz" | "plan" | "settings" | "team";
   targetId: string;
   targetLabel: string;
   details: string;
@@ -341,7 +343,13 @@ export type AuditAction =
   | "quiz.unpublished"
   | "quiz.archived"
   | "plan.updated"
-  | "settings.updated";
+  | "settings.updated"
+  | "team.invited"
+  | "team.invite_resent"
+  | "team.role_changed"
+  | "team.disabled"
+  | "team.enabled"
+  | "team.removed";
 
 export interface PlanOverride {
   maxActiveQuizzes?: number | null;

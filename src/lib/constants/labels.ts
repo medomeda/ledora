@@ -50,6 +50,12 @@ export const AUDIT_ACTION_LABELS: Record<import("@/types/domain").AuditAction, s
   "quiz.archived": "Quiz archivé",
   "plan.updated": "Offre configurée",
   "settings.updated": "Réglages modifiés",
+  "team.invited": "Collaborateur invité",
+  "team.invite_resent": "Invitation renvoyée",
+  "team.role_changed": "Rôle du collaborateur modifié",
+  "team.disabled": "Accès désactivé",
+  "team.enabled": "Accès réactivé",
+  "team.removed": "Collaborateur retiré",
 };
 
 export const PLAN_LABELS = { free: "Gratuit", starter: "Starter", pro: "Pro" } as const;

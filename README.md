@@ -21,7 +21,8 @@ Comptes de démonstration (mot de passe `Leadora2026`, raccourcis sur la page de
 |---|---|
 | `demo@leadora.app` | Espace complet : 4 quiz (2 publiés, 1 brouillon, 1 archivé), ~100 prospects, statistiques sur 35 jours |
 | `nouveau@leadora.app` | Espace vide : onboarding, états vides, premier quiz à créer |
-| `admin@leadora.app` | **Administration** (`/admin`) : ~14 comptes clients (offres, anciennetés, un compte suspendu), journal d'audit |
+| `admin@leadora.app` | **Administration** (`/admin`), rôle Administrateur : ~14 comptes clients (offres, anciennetés, un compte suspendu), journal d'audit, équipe |
+| `support@leadora.app` / `lecture@leadora.app` | Collaborateurs de l'équipe : rôles **Support** et **Lecture seule** (pour voir les permissions) |
 
 Quiz publics de démonstration : `/q/maturite-financiere` (design par défaut) et `/q/type-entrepreneur` (design personnalisé : thème Océan, titres en Fraunces, centré).
 Les données sont relatives à la date du jour, persistées dans `.data/leadora-demo.json`.
@@ -57,7 +58,7 @@ Voir `.env.example`, puis redémarrer.
 
 ## Administration de la plateforme
 
-Réservée au rôle `admin` (une page 404 pour tout autre visiteur), à `/admin` : vue d'ensemble (KPI, croissance, répartition par offre, comptes à surveiller), **comptes** (recherche, filtres, fiche avec usage vs quotas ; changer l'offre, suspendre avec motif, réactiver, confirmer l'email, lien de réinitialisation, déconnecter partout, promouvoir admin, supprimer définitivement avec confirmation), **quiz** (modération : dépublier ou archiver avec motif), **offres et quotas** (quotas et prix modifiables sans redéploiement), **journal d'audit** (toute action est consignée) et **réglages** (ouverture des inscriptions, annonce affichée à tous les clients). Un administrateur sans espace client est redirigé vers `/admin` après connexion.
+Réservée à l'équipe (une page 404 pour tout client), à `/admin` : vue d'ensemble avec **filtre de période** (7, 30, 90 jours, tout l'historique ou dates personnalisées ; indicateurs comparés à la période précédente ; courbe par jour, semaine ou mois selon la durée), **équipe** (inviter des collaborateurs avec un rôle : Administrateur, Support, Lecture seule ; changer le rôle, désactiver l'accès, retirer ; invitation par lien valable 7 jours), **comptes** (recherche, filtres, fiche avec usage vs quotas ; changer l'offre, suspendre avec motif, réactiver, confirmer l'email, lien de réinitialisation, déconnecter partout, supprimer définitivement avec confirmation selon le rôle), **quiz** (modération : dépublier ou archiver avec motif), **offres et quotas** (quotas et prix modifiables sans redéploiement), **journal d'audit** (toute action est consignée) et **réglages** (ouverture des inscriptions, annonce affichée à tous les clients). Un administrateur sans espace client est redirigé vers `/admin` après connexion.
 
 ## Parcours couverts
 

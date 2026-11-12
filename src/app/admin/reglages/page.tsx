@@ -3,7 +3,7 @@ import { SettingsForm } from "@/components/admin/settings-form";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { requireAdminUser } from "@/lib/auth/session";
+import { requireStaffUser } from "@/lib/auth/session";
 import { getFeatures } from "@/lib/features";
 import { ctxFor } from "@/server/context";
 import "@/server/bootstrap";
@@ -19,7 +19,7 @@ const FEATURES: Array<{ key: "ai" | "assistant" | "publications"; label: string;
 ];
 
 export default async function SettingsAdminPage() {
-  const user = await requireAdminUser("/admin/reglages");
+  const user = await requireStaffUser("/admin/reglages", "settings.manage");
   const settings = read((s) => getPlatformSettings(s, ctxFor(user.id)));
   const features = getFeatures();
   return (

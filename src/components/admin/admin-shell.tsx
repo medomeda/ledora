@@ -1,6 +1,6 @@
 "use client";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { ArrowLeft, Building2, Gauge, LogOut, Menu, ScrollText, SlidersHorizontal, Target, Tags, X } from "lucide-react";
+import { ArrowLeft, Building2, Gauge, LogOut, Menu, ScrollText, SlidersHorizontal, Target, Tags, UsersRound, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -8,23 +8,25 @@ import { logoutAction } from "@/actions/auth";
 import { Brand } from "@/components/layout/brand";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import type { Permission } from "@/lib/permissions/staff";
 import { cn } from "@/lib/utils/cn";
 import { initials } from "@/lib/utils/text";
 
-const NAV = [
+const NAV: Array<{ href: string; label: string; icon: typeof Gauge; exact?: boolean; permission?: Permission }> = [
   { href: "/admin", label: "Vue d'ensemble", icon: Gauge, exact: true },
   { href: "/admin/comptes", label: "Comptes", icon: Building2 },
   { href: "/admin/quiz", label: "Quiz", icon: Target },
-  { href: "/admin/offres", label: "Offres et quotas", icon: Tags },
+  { href: "/admin/offres", label: "Offres et quotas", icon: Tags, permission: "plans.configure" },
   { href: "/admin/journal", label: "Journal d'audit", icon: ScrollText },
-  { href: "/admin/reglages", label: "Réglages", icon: SlidersHorizontal },
+  { href: "/admin/equipe", label: "Équipe", icon: UsersRound, permission: "team.manage" },
+  { href: "/admin/reglages", label: "Réglages", icon: SlidersHorizontal, permission: "settings.manage" },
 ];
 
-function Links({ onNavigate }: { onNavigate?: () => void }) {
+function Links({ onNavigate, permissions }: { onNavigate?: () => void; permissions: Permission[] }) {
   const pathname = usePathname();
   return (
     <nav aria-label="Navigation de l'administration" className="space-y-0.5">
-      {NAV.map(({ href, label, icon: Icon, exact }) => {
+      {NAV.filter((n) => !n.permission || permissions.includes(n.permission)).map(({ href, label, icon: Icon, exact }) => {
         const active = exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link key={href} href={href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors", active ? "bg-white/12 text-white" : "text-white/65 hover:bg-white/8 hover:text-white")}>
@@ -37,7 +39,7 @@ function Links({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 /** Coque du back-office : barre latérale sombre pour qu'on ne confonde jamais l'administration avec l'espace d'un client. */
-export function AdminShell({ user, hasWorkspace, children }: { user: { firstName: string; lastName: string; email: string }; hasWorkspace: boolean; children: ReactNode }) {
+export function AdminShell({ user, roleLabel, permissions, hasWorkspace, children }: { user: { firstName: string; lastName: string; email: string }; roleLabel: string; permissions: Permission[]; hasWorkspace: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const footer = (
     <div className="mt-auto space-y-2">
@@ -52,8 +54,8 @@ export function AdminShell({ user, hasWorkspace, children }: { user: { firstName
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[248px_1fr]">
       <aside className="sticky top-0 hidden h-dvh flex-col bg-primary px-4 py-5 lg:flex">
-        <div className="mb-8 flex items-center justify-between px-2"><Brand href="/admin" light /><Badge tone="warning">Admin</Badge></div>
-        <Links />
+        <div className="mb-8 flex items-center justify-between px-2"><Brand href="/admin" light /><Badge tone="warning">{roleLabel}</Badge></div>
+        <Links permissions={permissions} />
         {footer}
       </aside>
       <div className="flex min-w-0 flex-col">
@@ -66,7 +68,7 @@ export function AdminShell({ user, hasWorkspace, children }: { user: { firstName
                 <DialogPrimitive.Title className="sr-only">Menu</DialogPrimitive.Title>
                 <DialogPrimitive.Description className="sr-only">Navigation de l&apos;administration</DialogPrimitive.Description>
                 <div className="mb-6 flex items-center justify-between px-2"><Brand href="/admin" light /><DialogPrimitive.Close className="rounded p-1 text-white/70" aria-label="Fermer"><X className="size-5" /></DialogPrimitive.Close></div>
-                <Links onNavigate={() => setOpen(false)} />
+                <Links permissions={permissions} onNavigate={() => setOpen(false)} />
                 {footer}
               </DialogPrimitive.Content>
             </DialogPrimitive.Portal>

@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/feedback";
 import { PageHeader } from "@/components/ui/page-header";
 import { Table, TD, TH, THead, TR } from "@/components/ui/table";
-import { requireAdminUser } from "@/lib/auth/session";
+import { requireStaffUser } from "@/lib/auth/session";
 import { PLAN_LABELS } from "@/lib/constants/labels";
 import { fmtDate, fmtRelative } from "@/lib/utils/dates";
 import { ctxFor } from "@/server/context";
@@ -21,7 +21,7 @@ type SP = Record<string, string | undefined>;
 
 export default async function AccountsPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
-  const user = await requireAdminUser("/admin/comptes");
+  const user = await requireStaffUser("/admin/comptes");
   const filters: AccountFilters = {
     q: sp.q,
     plan: sp.plan === "free" || sp.plan === "starter" || sp.plan === "pro" ? sp.plan : "",

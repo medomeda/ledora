@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { authed, failureLimiter, fieldErrorsOf, safeNext, toFailure, type ActionResult } from "@/actions/_shared";
 import "@/server/bootstrap";
+import { isStaff } from "@/lib/permissions/staff";
 import { createSession, destroySession, getSession, SESSION_COOKIE } from "@/lib/auth/session";
 import { changePasswordSchema, forgotPasswordSchema, loginSchema, profileSchema, registerSchema, resetPasswordSchema } from "@/lib/validations";
 import { read, tx } from "@/server/db/store";
@@ -35,8 +36,9 @@ export async function loginAction(raw: unknown): Promise<ActionResult> {
     return { ok: false, error: "Email ou mot de passe incorrect." };
   }
   limiter.reset();
+  if (user.disabledAt) return { ok: false, error: "Votre accès est désactivé. Contactez un administrateur." };
   await createSession(user.id);
-  redirect(safeNext(parsed.data.next, user.role === "admin" ? "/admin" : "/dashboard"));
+  redirect(safeNext(parsed.data.next, isStaff(user.role) ? "/admin" : "/dashboard"));
 }
 
 export async function logoutAction(): Promise<void> {

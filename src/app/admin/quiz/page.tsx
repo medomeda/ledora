@@ -10,7 +10,8 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/feedback";
 import { PageHeader } from "@/components/ui/page-header";
 import { Table, TD, TH, THead, TR } from "@/components/ui/table";
-import { requireAdminUser } from "@/lib/auth/session";
+import { requireStaffUser } from "@/lib/auth/session";
+import { can } from "@/lib/permissions/staff";
 import { QUIZ_STATUS_LABELS } from "@/lib/constants/labels";
 import { fmtRelative } from "@/lib/utils/dates";
 import { ctxFor } from "@/server/context";
@@ -24,7 +25,8 @@ type SP = Record<string, string | undefined>;
 
 export default async function AdminQuizzesPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
-  const user = await requireAdminUser("/admin/quiz");
+  const user = await requireStaffUser("/admin/quiz");
+  const canModerate = can(user.role, "quiz.moderate");
   const status = (["draft", "published", "archived"] as const).includes(sp.status as QuizStatus) ? (sp.status as QuizStatus) : "";
   const page = read((s) => listAllQuizzes(s, ctxFor(user.id), { q: sp.q, status, page: Number(sp.page) || 1 }));
   return (
@@ -45,7 +47,7 @@ export default async function AdminQuizzesPage({ searchParams }: { searchParams:
                   <TD className="text-right tabular-nums">{q.participants}</TD>
                   <TD className="text-right tabular-nums">{q.leads}</TD>
                   <TD className="whitespace-nowrap text-muted-foreground">{fmtRelative(q.updatedAt)}</TD>
-                  <TD><div className="flex items-center justify-end gap-2">{q.status === "published" && <a href={`/q/${q.slug}`} target="_blank" rel="noreferrer" className="rounded p-1.5 text-muted-foreground hover:bg-muted" aria-label={`Ouvrir le quiz ${q.title}`}><ExternalLink className="size-4" /></a>}<QuizModeration quizId={q.id} title={q.title} status={q.status} /></div></TD>
+                  <TD><div className="flex items-center justify-end gap-2">{q.status === "published" && <a href={`/q/${q.slug}`} target="_blank" rel="noreferrer" className="rounded p-1.5 text-muted-foreground hover:bg-muted" aria-label={`Ouvrir le quiz ${q.title}`}><ExternalLink className="size-4" /></a>}{canModerate && <QuizModeration quizId={q.id} title={q.title} status={q.status} />}</div></TD>
                 </TR>
               ))}
             </tbody>

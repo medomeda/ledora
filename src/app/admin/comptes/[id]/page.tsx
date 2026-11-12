@@ -7,7 +7,8 @@ import { Alert } from "@/components/ui/feedback";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TD, TH, THead, TR } from "@/components/ui/table";
-import { requireAdminUser } from "@/lib/auth/session";
+import { requireStaffUser } from "@/lib/auth/session";
+import { can } from "@/lib/permissions/staff";
 import { guard } from "@/lib/auth/guard";
 import { AUDIT_ACTION_LABELS } from "@/lib/constants/labels";
 import { fmtDate, fmtDateTime, fmtRelative } from "@/lib/utils/dates";
@@ -32,9 +33,10 @@ const Row = ({ k, children }: { k: string; children: React.ReactNode }) => <div 
 
 export default async function AccountPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const user = await requireAdminUser(`/admin/comptes/${id}`);
+  const user = await requireStaffUser(`/admin/comptes/${id}`);
   const ctx = ctxFor(user.id);
-  const { d, impact } = await guard(() => read((s) => ({ d: getAccount(s, ctx, id), impact: previewAccountDeletion(s, ctx, id) })));
+  const canDelete = can(user.role, "account.delete");
+  const { d, impact } = await guard(() => read((s) => ({ d: getAccount(s, ctx, id), impact: canDelete ? previewAccountDeletion(s, ctx, id) : { quizzes: 0, submissions: 0, leads: 0 } })));
   const b = d.business;
   return (
     <div className="space-y-6">
@@ -43,7 +45,6 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="font-display text-2xl font-semibold sm:text-3xl">{b.name}</h1>
           <PlanBadge plan={b.plan} /><AccountStatusBadge status={b.status} />
-          {d.owner.role === "admin" && <Badge tone="ink">Administrateur</Badge>}
         </div>
         <p className="mt-1 text-sm text-muted-foreground">{d.owner.firstName} {d.owner.lastName} · {d.owner.email}</p>
       </div>
@@ -54,7 +55,7 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
         <Card className="lg:col-span-2">
           <CardHeader><div><CardTitle>Actions</CardTitle><CardDescription>Chaque action est consignée dans le journal d&apos;audit.</CardDescription></div></CardHeader>
           <CardBody>
-            <AccountActions businessId={b.id} ownerId={d.owner.id} ownerEmail={d.owner.email} plan={b.plan} suspended={b.status === "suspended"} emailVerified={!!d.owner.emailVerifiedAt} ownerIsAdmin={d.owner.role === "admin"} isSelf={d.owner.id === user.id} impact={impact} />
+            <AccountActions businessId={b.id} ownerEmail={d.owner.email} plan={b.plan} suspended={b.status === "suspended"} emailVerified={!!d.owner.emailVerifiedAt} can={{ support: can(user.role, "account.support"), billing: can(user.role, "account.billing"), delete: can(user.role, "account.delete") }} impact={impact} />
           </CardBody>
         </Card>
         <div className="space-y-6">

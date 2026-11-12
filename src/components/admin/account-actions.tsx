@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { changePlanAction, deleteAccountAction, issueResetLinkAction, reactivateAccountAction, revokeSessionsAction, setRoleAction, suspendAccountAction, verifyEmailAction } from "@/actions/admin";
+import { changePlanAction, deleteAccountAction, issueResetLinkAction, reactivateAccountAction, revokeSessionsAction, suspendAccountAction, verifyEmailAction } from "@/actions/admin";
 import { Alert } from "@/components/ui/feedback";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogContent } from "@/components/ui/dialog";
@@ -15,18 +15,16 @@ import type { PlanId } from "@/types/domain";
 
 interface Props {
   businessId: string;
-  ownerId: string;
   ownerEmail: string;
   plan: PlanId;
   suspended: boolean;
   emailVerified: boolean;
-  ownerIsAdmin: boolean;
-  isSelf: boolean;
+  can: { support: boolean; billing: boolean; delete: boolean };
   impact: { quizzes: number; submissions: number; leads: number };
 }
 
 /** Actions d'administration sur un compte. Chaque action sensible demande une confirmation et, selon le cas, un motif. */
-export function AccountActions({ businessId, ownerId, ownerEmail, plan, suspended, emailVerified, ownerIsAdmin, isSelf, impact }: Props) {
+export function AccountActions({ businessId, ownerEmail, plan, suspended, emailVerified, can, impact }: Props) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [newPlan, setNewPlan] = useState<PlanId>(plan);
@@ -46,24 +44,24 @@ export function AccountActions({ businessId, ownerId, ownerEmail, plan, suspende
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-end gap-2">
+      {!can.support && !can.billing && !can.delete && <p className="text-sm text-muted-foreground">Votre rôle (lecture seule) ne permet pas de modifier ce compte.</p>}
+      {can.billing && <div className="flex flex-wrap items-end gap-2">
         <Field label="Offre du compte" htmlFor="plan" className="w-48">
           <Select id="plan" value={newPlan} onChange={(e) => setNewPlan(e.target.value as PlanId)}>{Object.entries(PLAN_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select>
         </Field>
         <Button disabled={newPlan === plan} loading={pending} onClick={() => run(() => changePlanAction({ businessId, plan: newPlan }), "Offre mise à jour.")}>Appliquer</Button>
-      </div>
+      </div>}
 
-      <div className="flex flex-wrap gap-2">
+      {can.support && <div className="flex flex-wrap gap-2">
         {suspended ? (
           <Button variant="outline" loading={pending} onClick={() => run(() => reactivateAccountAction({ businessId }), "Compte réactivé.")}><ShieldCheck /> Réactiver le compte</Button>
         ) : (
-          <Button variant="outline" disabled={isSelf} onClick={() => { setReason(""); setReasonError(null); setSuspendOpen(true); }}><ShieldOff /> Suspendre</Button>
+          <Button variant="outline" onClick={() => { setReason(""); setReasonError(null); setSuspendOpen(true); }}><ShieldOff /> Suspendre</Button>
         )}
         {!emailVerified && <Button variant="outline" loading={pending} onClick={() => run(() => verifyEmailAction({ businessId }), "Email marqué comme confirmé.")}><MailCheck /> Confirmer l&apos;email</Button>}
         <Button variant="outline" loading={pending} onClick={() => run(async () => { const r = await issueResetLinkAction({ businessId }); if (r.ok) setLink(r.data.link); return r; }, "Lien de réinitialisation émis.")}><KeyRound /> Lien de réinitialisation</Button>
         <Button variant="outline" loading={pending} onClick={() => run(async () => { const r = await revokeSessionsAction({ businessId }); return r; }, "Sessions révoquées.")}><LogOut /> Déconnecter partout</Button>
-        {!isSelf && <Button variant="outline" loading={pending} onClick={() => run(() => setRoleAction({ userId: ownerId, role: ownerIsAdmin ? "user" : "admin" }), ownerIsAdmin ? "Rôle administrateur retiré." : "Utilisateur promu administrateur.")}>{ownerIsAdmin ? "Retirer le rôle admin" : "Promouvoir administrateur"}</Button>}
-      </div>
+      </div>}
 
       {link && (
         <Alert tone="info" title="Lien valable 1 heure (aucun email n'est envoyé en simulation)">
@@ -71,12 +69,11 @@ export function AccountActions({ businessId, ownerId, ownerEmail, plan, suspende
         </Alert>
       )}
 
-      <div className="rounded-lg border border-destructive/30 bg-destructive-soft/40 p-4">
+      {can.delete && <div className="rounded-lg border border-destructive/30 bg-destructive-soft/40 p-4">
         <p className="text-sm font-medium">Zone dangereuse</p>
         <p className="mt-1 text-sm text-muted-foreground">La suppression efface définitivement l&apos;espace, ses quiz, ses participations et ses prospects (droit à l&apos;effacement). Elle ne peut pas être annulée.</p>
-        <Button variant="destructive" className="mt-3" disabled={isSelf || ownerIsAdmin} onClick={() => { setConfirm(""); setDeleteError(null); setDeleteOpen(true); }}><Trash2 /> Supprimer le compte</Button>
-        {ownerIsAdmin && !isSelf && <p className="mt-2 text-xs text-muted-foreground">Retirez d&apos;abord son rôle administrateur.</p>}
-      </div>
+        <Button variant="destructive" className="mt-3" onClick={() => { setConfirm(""); setDeleteError(null); setDeleteOpen(true); }}><Trash2 /> Supprimer le compte</Button>
+      </div>}
 
       <Dialog open={suspendOpen} onOpenChange={setSuspendOpen}>
         <DialogContent title="Suspendre ce compte" description="Le client ne pourra plus utiliser son espace et ses quiz publics cesseront de répondre. Ses données sont conservées.">

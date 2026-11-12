@@ -3,11 +3,14 @@ import { ctxFor } from "@/server/context";
 import { emptyState, type DbState } from "@/server/db/store";
 import { seed } from "@/server/db/seed";
 import { AppError } from "@/server/errors";
-import { authenticate } from "@/services/auth.service";
+import { authenticate, isResetTokenValid, resetPassword } from "@/services/auth.service";
 import * as admin from "@/services/admin.service";
+import { resolveRange } from "@/services/admin.service";
 import { planDef } from "@/lib/constants/plans";
 import { getPublicQuiz, createQuiz } from "@/services/quiz.service";
 import { startQuiz } from "@/services/public.service";
+import * as team from "@/services/team.service";
+import { can } from "@/lib/permissions/staff";
 import { makeWorld, publishedQuiz, sampleConfig } from "./helpers";
 
 function world() {
@@ -68,10 +71,7 @@ describe("administration : comptes", () => {
     expect(demoBiz.suspensionReason).toBe("");
   });
 
-  it("un administrateur ne peut pas se suspendre, se supprimer ni changer son rôle", () => {
-    const { s, adminCtx, adminUser } = world();
-    expect(code(() => admin.setUserRole(s, adminCtx, adminUser.id, "user"))).toBe("INVALID_STATE");
-    // Il n'a pas d'espace : on lui en crée un pour tester les garde-fous sur son propre compte.
+  it("un administrateur ne peut pas se suspendre ni se supprimer lui-même", () => {
     const w = makeWorld("self-admin@test.dev");
     w.user.role = "admin";
     expect(code(() => admin.suspendAccount(w.s, w.ctx, w.business.id, "motif"))).toBe("INVALID_STATE");
@@ -148,5 +148,115 @@ describe("administration : quiz, offres et réglages", () => {
     expect(o.series).toHaveLength(30);
     expect(o.plans.reduce((n, p) => n + p.count, 0)).toBe(s.businesses.length);
     expect(o.watch.some((w) => w.tone === "danger")).toBe(true);
+  });
+});
+
+describe("administration : équipe et rôles", () => {
+  const ctxOf = (s: DbState, email: string) => ctxFor(s.users.find((u) => u.email === email)!.id);
+
+  it("applique la matrice de permissions par rôle", () => {
+    const { s, adminCtx, demoBiz } = world();
+    const support = ctxOf(s, "support@leadora.app");
+    const readonly = ctxOf(s, "lecture@leadora.app");
+    expect(can("support", "account.support")).toBe(true);
+    expect(can("support", "plans.configure")).toBe(false);
+    // Lecture seule : consulte, ne modifie rien.
+    expect(admin.listAccounts(s, readonly).total).toBeGreaterThan(5);
+    expect(code(() => admin.suspendAccount(s, readonly, demoBiz.id, "motif"))).toBe("FORBIDDEN");
+    // Support : aide les clients, mais ni offre, ni suppression, ni réglages, ni équipe.
+    admin.markEmailVerified(s, support, demoBiz.id);
+    admin.suspendAccount(s, support, demoBiz.id, "Signalement");
+    expect(code(() => admin.setAccountPlan(s, support, demoBiz.id, "pro"))).toBe("FORBIDDEN");
+    expect(code(() => admin.deleteAccount(s, support, demoBiz.id, "demo@leadora.app"))).toBe("FORBIDDEN");
+    expect(code(() => admin.updatePlatformSettings(s, support, { registrationsOpen: false, announcement: "" }))).toBe("FORBIDDEN");
+    expect(code(() => admin.updatePlan(s, support, "free", { maxActiveQuizzes: 1, maxMonthlySubmissions: 1, maxMonthlyAiGenerations: 1, priceLabel: "0 €" }))).toBe("FORBIDDEN");
+    expect(code(() => team.listTeam(s, support))).toBe("FORBIDDEN");
+    expect(code(() => team.inviteCollaborator(s, support, { firstName: "A", lastName: "B", email: "x@y.dev", role: "admin" }))).toBe("FORBIDDEN");
+    expect(team.listTeam(s, adminCtx).length).toBe(4);
+  });
+
+  it("invite un collaborateur, qui choisit son mot de passe via le lien puis se connecte", () => {
+    const { s, adminCtx } = world();
+    expect(code(() => team.inviteCollaborator(s, adminCtx, { firstName: "Doublon", lastName: "X", email: "SUPPORT@leadora.app", role: "support" }))).toBe("CONFLICT");
+    const { user, link } = team.inviteCollaborator(s, adminCtx, { firstName: "Léo", lastName: "Martin", email: "Leo@Leadora.app", role: "support" });
+    expect(user.email).toBe("leo@leadora.app");
+    expect(s.businesses.some((b) => b.ownerId === user.id)).toBe(false);
+    expect(team.listTeam(s, adminCtx).find((m) => m.id === user.id)!.status).toBe("invited");
+    expect(authenticate(s, "leo@leadora.app", "Motdepasse1")).toBeNull();
+    const token = link.split("/").pop()!;
+    expect(isResetTokenValid(s, token)).toBe(true);
+    resetPassword(s, token, "Motdepasse1");
+    expect(authenticate(s, "leo@leadora.app", "Motdepasse1")?.role).toBe("support");
+  });
+
+  it("protège le dernier administrateur et le collaborateur lui-même", () => {
+    const { s, adminCtx, adminUser } = world();
+    expect(code(() => team.changeMemberRole(s, adminCtx, adminUser.id, "support"))).toBe("INVALID_STATE");
+    expect(code(() => team.setMemberAccess(s, adminCtx, adminUser.id, false))).toBe("INVALID_STATE");
+    expect(code(() => team.removeCollaborator(s, adminCtx, adminUser.id))).toBe("INVALID_STATE");
+    // Un second admin peut être promu, puis le premier peut être rétrogradé par lui.
+    const support = s.users.find((u) => u.email === "support@leadora.app")!;
+    team.changeMemberRole(s, adminCtx, support.id, "admin");
+    expect(code(() => team.setMemberAccess(s, ctxFor(support.id), adminUser.id, false))).toBeNull();
+    // Il ne reste que lui : il ne peut plus se retirer, ni être retiré.
+    expect(code(() => team.changeMemberRole(s, ctxFor(adminUser.id), support.id, "readonly"))).toBe("FORBIDDEN");
+  });
+
+  it("désactiver un accès ferme ses sessions et bloque ses permissions", () => {
+    const { s, adminCtx } = world();
+    const m = s.users.find((u) => u.email === "support@leadora.app")!;
+    s.sessions.push({ tokenHash: "t", userId: m.id, expiresAt: new Date(Date.now() + 1e6).toISOString(), createdAt: new Date().toISOString() });
+    team.setMemberAccess(s, adminCtx, m.id, false);
+    expect(s.sessions.some((x) => x.userId === m.id)).toBe(false);
+    expect(code(() => admin.listAccounts(s, ctxFor(m.id)))).toBe("FORBIDDEN");
+    team.setMemberAccess(s, adminCtx, m.id, true);
+    expect(admin.listAccounts(s, ctxFor(m.id)).total).toBeGreaterThan(5);
+    team.removeCollaborator(s, adminCtx, m.id);
+    expect(s.users.some((u) => u.id === m.id)).toBe(false);
+    expect(admin.listAudit(s, adminCtx).rows[0]!.action).toBe("team.removed");
+  });
+
+  it("un client n'est jamais membre de l'équipe", () => {
+    const { s, adminCtx, demoCtx } = world();
+    expect(team.listTeam(s, adminCtx).every((m) => m.email.endsWith("@leadora.app") && m.email !== "demo@leadora.app")).toBe(true);
+    expect(code(() => team.listTeam(s, demoCtx))).toBe("FORBIDDEN");
+  });
+});
+
+describe("administration : filtre de période du tableau de bord", () => {
+  it("résout les préréglages, « tout » et les périodes personnalisées", () => {
+    const { s } = world();
+    const now = new Date(2026, 10, 12, 15, 0);
+    expect(resolveRange(s, { range: "7" }, now).previous).not.toBeNull();
+    const seven = resolveRange(s, { range: "7" }, now);
+    expect(Math.round((seven.to.getTime() - seven.from.getTime()) / 86400000)).toBe(7);
+    expect(resolveRange(s, { range: "n'importe quoi" }, now).key).toBe("30");
+    expect(resolveRange(s, { range: "all" }, now).previous).toBeNull();
+    const custom = resolveRange(s, { range: "custom", from: "2026-10-01", to: "2026-10-10" }, now);
+    expect(custom.key).toBe("custom");
+    expect(custom.from.getDate()).toBe(1);
+    // Dates inversées ou futures : corrigées, jamais d'erreur.
+    const fixed = resolveRange(s, { from: "2026-11-30", to: "2026-11-20" }, now);
+    expect(fixed.from <= fixed.to).toBe(true);
+    expect(fixed.to <= new Date(2026, 10, 12, 23, 59, 59, 999)).toBe(true);
+  });
+
+  it("recalcule indicateurs et courbe selon la période", () => {
+    const { s, adminCtx } = world();
+    const now = adminCtx.now;
+    const o7 = admin.getOverview(s, adminCtx, admin.resolveRange(s, { range: "7" }, now));
+    const o90 = admin.getOverview(s, adminCtx, admin.resolveRange(s, { range: "90" }, now));
+    const all = admin.getOverview(s, adminCtx, admin.resolveRange(s, { range: "all" }, now));
+    expect(o7.series).toHaveLength(7);
+    expect(o90.series.length).toBeGreaterThan(30);
+    expect(o7.kpis.submissions).toBeLessThanOrEqual(o90.kpis.submissions);
+    expect(o90.kpis.submissions).toBeLessThanOrEqual(all.kpis.submissions);
+    expect(all.kpis.submissions).toBe(s.quizSubmissions.length);
+    expect(all.kpis.newAccounts).toBe(s.businesses.length);
+    expect(all.kpis.previousNewAccounts).toBeNull();
+    expect(o7.series.reduce((n, p) => n + p.submissions, 0)).toBe(o7.kpis.submissions);
+    const none = admin.getOverview(s, adminCtx, admin.resolveRange(s, { range: "custom", from: "2020-01-01", to: "2020-01-31" }, now));
+    expect(none.kpis.submissions).toBe(0);
+    expect(none.kpis.newAccounts).toBe(0);
   });
 });

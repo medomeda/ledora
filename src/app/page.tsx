@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { Brand } from "@/components/layout/brand";
 import { HeroQuiz } from "@/components/marketing/hero-quiz";
 import { Button } from "@/components/ui/button";
+import { isStaff } from "@/lib/permissions/staff";
 import { getSession } from "@/lib/auth/session";
 import "@/server/bootstrap";
 import { allPlans } from "@/lib/constants/plans";
@@ -55,7 +56,7 @@ const jsonLd = {
 
 export default async function Home() {
   const session = await getSession();
-  if (session) redirect(session.role === "admin" ? "/admin" : "/dashboard");
+  if (session) redirect(isStaff(session.role) ? "/admin" : "/dashboard");
   const plans = read((s) => allPlans(s));
   return (
     <div className="min-h-dvh bg-background">

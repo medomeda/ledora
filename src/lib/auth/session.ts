@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import "@/server/bootstrap";
+import { can, isStaff, type Permission } from "@/lib/permissions/staff";
 import { read, tx } from "@/server/db/store";
 import { newToken, sha256 } from "@/server/ids";
 import type { Business, User } from "@/types/domain";
@@ -62,7 +63,7 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
     const row = s.sessions.find((x) => x.tokenHash === h);
     if (!row || new Date(row.expiresAt) <= new Date()) return null;
     const user = s.users.find((u) => u.id === row.userId);
-    return user ? toSessionUser(user) : null;
+    return user && !user.disabledAt ? toSessionUser(user) : null;
   });
 });
 
@@ -71,7 +72,7 @@ export async function requireUser(next?: string): Promise<SessionUser> {
   const user = await getSession();
   if (!user) redirect(next ? `/login?next=${encodeURIComponent(next)}` : "/login");
   // Un administrateur sans espace client n'a pas de pages « client » : son poste de travail est /admin.
-  if (user.role === "admin" && !getBusinessOf(user.id)) redirect("/admin");
+  if (isStaff(user.role) && !getBusinessOf(user.id)) redirect("/admin");
   return user;
 }
 
@@ -79,10 +80,10 @@ export function getBusinessOf(userId: string): Business | null {
   return read((s) => s.businesses.find((b) => b.ownerId === userId) ?? null);
 }
 
-/** Pages du back-office : réservées aux administrateurs. Tout autre visiteur voit une page 404 (l'existence de /admin n'est pas révélée). */
-export async function requireAdminUser(next = "/admin"): Promise<SessionUser> {
+/** Pages du back-office : réservées à l'équipe, selon la permission requise. Tout autre visiteur voit une page 404 (l'existence de /admin n'est pas révélée). */
+export async function requireStaffUser(next = "/admin", permission: Permission = "view"): Promise<SessionUser> {
   const user = await getSession();
   if (!user) redirect(`/login?next=${encodeURIComponent(next)}`);
-  if (user.role !== "admin") notFound();
+  if (!can(user.role, permission)) notFound();
   return user;
 }

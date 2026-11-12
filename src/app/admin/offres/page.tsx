@@ -2,19 +2,19 @@ import type { Metadata } from "next";
 import { PlanEditor } from "@/components/admin/plan-editor";
 import { Alert } from "@/components/ui/feedback";
 import { PageHeader } from "@/components/ui/page-header";
-import { requireAdminUser } from "@/lib/auth/session";
+import { requireStaffUser } from "@/lib/auth/session";
 import { allPlans, PLANS } from "@/lib/constants/plans";
 import { ctxFor } from "@/server/context";
 import "@/server/bootstrap";
 import { read } from "@/server/db/store";
-import { requireAdmin } from "@/services/admin.service";
+import { requireStaff } from "@/services/admin.service";
 
 export const metadata: Metadata = { title: "Offres et quotas" };
 
 export default async function PlansPage() {
-  const user = await requireAdminUser("/admin/offres");
+  const user = await requireStaffUser("/admin/offres", "plans.configure");
   const plans = read((s) => {
-    requireAdmin(s, ctxFor(user.id));
+    requireStaff(s, ctxFor(user.id), "plans.configure");
     return allPlans(s).map((p) => ({ ...p, accounts: s.businesses.filter((b) => b.plan === p.id).length, customized: !!s.settings.planOverrides[p.id] }));
   });
   return (

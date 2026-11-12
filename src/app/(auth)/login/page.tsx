@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/forms/auth-forms";
+import { isStaff } from "@/lib/permissions/staff";
 import { getSession } from "@/lib/auth/session";
 import { safeNext } from "@/actions/_shared";
 
@@ -10,7 +11,7 @@ export const metadata: Metadata = { title: "Connexion" };
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; reset?: string }> }) {
   const sp = await searchParams;
   const session = await getSession();
-  if (session) redirect(safeNext(sp.next, session.role === "admin" ? "/admin" : "/dashboard"));
+  if (session) redirect(safeNext(sp.next, isStaff(session.role) ? "/admin" : "/dashboard"));
   return (
     <>
       <h1 className="font-display text-3xl font-semibold">Bon retour</h1>
