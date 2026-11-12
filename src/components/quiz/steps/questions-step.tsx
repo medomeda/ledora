@@ -10,10 +10,8 @@ import { Input, Select, Switch, Textarea } from "@/components/ui/input";
 import { blankOption, blankQuestion, newUid } from "@/lib/quiz/factory";
 import { cn } from "@/lib/utils/cn";
 import { profileColor } from "@/lib/constants/profile-colors";
-import { questionMaxScore } from "@/services/scoring.service";
 import type { QuizOption } from "@/types/domain";
 
-const int = (v: string) => Math.max(-100, Math.min(100, Math.trunc(Number(v)) || 0));
 
 /**
  * Réglages avancés d'une question (description, choix multiple, réponse facultative) : conservés dans le modèle et le

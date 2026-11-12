@@ -3,12 +3,13 @@ import { redirect } from "next/navigation";
 import { getFeatures } from "@/lib/features";
 import { authed, type ActionResult } from "@/actions/_shared";
 import "@/server/bootstrap";
-import { aiAdoptSchema, aiGenerateQuizSchema, aiImproveSchema } from "@/lib/validations";
+import { aiAdoptSchema, aiCreateFromConfigSchema, aiGenerateQuizSchema, aiImproveSchema, aiRefineSchema } from "@/lib/validations";
 import { AppError } from "@/server/errors";
 import { read, tx } from "@/server/db/store";
 import { getAiProvider } from "@/services/ai";
 import { AiProviderError } from "@/services/ai/types";
 import * as ai from "@/services/ai.service";
+import { createQuiz, sanitizeConfig } from "@/services/quiz.service";
 import type { QuizConfig } from "@/types/domain";
 
 /** Les appels au fournisseur d'IA partent du serveur uniquement ; aucune donnée de prospect n'est transmise. */
@@ -46,4 +47,24 @@ export async function improveTextAction(raw: unknown): Promise<ActionResult<{ va
     tx((s) => ai.recordGeneration(s, ctx, { type: "improve", input: { kind: input.kind }, output: variants, provider: provider.name, model: provider.model, status: "success" }));
     return { variants };
   });
+}
+
+/** Ajustement en langage naturel d'un quiz (proposition ou brouillon) : renvoie une PROPOSITION, rien n'est enregistré. */
+export async function refineQuizAction(raw: unknown): Promise<ActionResult<{ config: QuizConfig; changes: string[]; hint?: string }>> {
+  if (!getFeatures().ai) return { ok: false, error: "L'assistance IA est désactivée." };
+  return authed(aiRefineSchema, raw, async (input, ctx) => {
+    const business = read((s) => ai.assertAiQuota(s, ctx));
+    const provider = getAiProvider();
+    const result = await provider.refineQuiz({ config: input.config as QuizConfig, instruction: input.instruction, tone: "professionnel", business: ai.businessContext(business) });
+    tx((s) => ai.recordGeneration(s, ctx, { type: "refine", input: { instruction: input.instruction }, output: { changes: result.changes }, provider: provider.name, model: provider.model, status: "success" }));
+    return result;
+  });
+}
+
+/** Crée un BROUILLON à partir d'une proposition (éventuellement ajustée) validée par l'utilisateur. Jamais publié. */
+export async function createQuizFromAiAction(raw: unknown): Promise<ActionResult> {
+  if (!getFeatures().ai) return { ok: false, error: "L'assistance IA est désactivée." };
+  const res = await authed(aiCreateFromConfigSchema, raw, (input, ctx) => tx((s) => { const config = sanitizeConfig(input.config as QuizConfig); return createQuiz(s, ctx, { title: config.title, config }).id; }));
+  if (res.ok) redirect(`/lead-magnets/${res.data}`);
+  return res as ActionResult;
 }

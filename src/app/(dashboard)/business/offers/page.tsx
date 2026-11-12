@@ -15,7 +15,7 @@ export default async function OffersPage() {
   const business = await guard(() => read((s) => getBusiness(s, ctxFor(user.id))));
   return (
     <Card>
-      <CardHeader><div><CardTitle>Offres et services</CardTitle><CardDescription>Ce que vous proposez à vos prospects (jusqu&apos;à 10).</CardDescription></div></CardHeader>
+      <CardHeader><div><CardTitle>Offres et services</CardTitle><CardDescription>Ce que vous proposez à vos prospects (jusqu&apos;à 10). L&apos;IA s&apos;en sert pour proposer des appels à l&apos;action pertinents.</CardDescription></div></CardHeader>
       <CardBody className="sm:p-7"><OffersForm initial={business.offers} /></CardBody>
     </Card>
   );

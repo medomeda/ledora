@@ -264,7 +264,7 @@ export interface Publication {
   updatedAt: ISODateTime;
 }
 
-export type AiGenerationType = "quiz" | "questions" | "profiles" | "results" | "improve";
+export type AiGenerationType = "quiz" | "questions" | "profiles" | "results" | "improve" | "refine";
 
 export interface AiGeneration {
   id: string;

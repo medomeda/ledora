@@ -1,7 +1,7 @@
 # Leadora — Quiz marketing et qualification de prospects
 
 Plateforme SaaS pour créer des quiz de diagnostic, collecter des prospects et les qualifier : créateur de quiz en
-5 étapes, pages publiques, CRM et statistiques.
+6 étapes avec assistance IA, pages publiques, CRM et statistiques.
 
 > **Phase actuelle : application complète sur données simulées côté serveur.**
 > Règles métier, permissions et validations sont réelles et testées ; seules la persistance (PostgreSQL + Drizzle),
@@ -41,12 +41,18 @@ Réinitialisation : `npm run demo:reset` puis redémarrage.
 Next.js 16 (App Router, Server Components, Server Actions, Route Handlers) · React 19 · TypeScript strict ·
 Tailwind CSS v4 · composants façon shadcn/ui (Radix UI) · React Hook Form + Zod 4 · Recharts · date-fns · Sonner · Vitest.
 
-## Modules au chaud
+## IA et modules au chaud
 
-Le calendrier de **Publications** et l'**Assistant IA** sont codés et testés mais désactivés (hors du cœur de la
-plateforme) : absents du menu, pages en 404, actions refusées. Pour les réactiver, mettre
-`LEADORA_FEATURE_PUBLICATIONS=1` et/ou `LEADORA_FEATURE_AI=1` (voir `.env.example`), puis redémarrer
-(`npm run demo:reset` pour recréer les publications de démonstration).
+**IA dans la création de quiz (active)** : générer un quiz complet à partir d'une description (onglet « Avec l'IA » de
+« Nouveau quiz »), l'**ajuster en langage naturel** avant de créer le brouillon (« Ajoute une question sur l'épargne »,
+« Ton plus dynamique »…, avec suivi des ajustements et annulation), reformuler un titre, une question ou un diagnostic
+(« Améliorer avec l'IA »), et ajuster un brouillon existant depuis le créateur (bouton « Ajuster avec l'IA »). L'IA propose,
+vous validez : rien n'est publié automatiquement. Le fournisseur est **simulé** (`AI_PROVIDER=mock`) : il reconnaît un
+jeu de formulations (voir les exemples affichés) en attendant un vrai modèle de langage. `LEADORA_FEATURE_AI=0` désactive tout.
+
+**Au chaud (désactivés)** : le module **Assistant IA** du menu (`LEADORA_FEATURE_ASSISTANT=1`) et le calendrier de
+**Publications** (`LEADORA_FEATURE_PUBLICATIONS=1`) : codés et testés, absents du menu, pages en 404, actions refusées.
+Voir `.env.example`, puis redémarrer.
 
 ## Parcours couverts
 

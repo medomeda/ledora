@@ -58,3 +58,43 @@ describe("thèmes de l'IA simulée", () => {
     expect(lead.profiles[0]!.name).toContain("Leader");
   });
 });
+
+describe("ajustements de quiz par l'IA simulée", () => {
+  const business = { name: "Coach", activityType: "coaching", industry: "", description: "", offers: [], bookingUrl: "https://cal.example/rdv" };
+  const base = async () => {
+    const { MockAiProvider } = await import("@/services/ai/mock-provider");
+    const p = new MockAiProvider();
+    return { p, config: p.buildQuiz({ brief: "Diagnostic financier des salariés", target: "", tone: "chaleureux", questionCount: 5, business }) };
+  };
+  const refine = async (instruction: string) => { const { p, config } = await base(); return { original: config, ...(await p.refineQuiz({ config, instruction, tone: "professionnel", business })) }; };
+
+  it("ajoute des questions sur un thème, reliées aux profils existants", async () => {
+    const r = await refine("Ajoute deux questions sur l'épargne de précaution");
+    expect(r.config.questions).toHaveLength(7);
+    expect(r.config.questions[5]!.title).toContain("l'épargne de précaution");
+    const ids = new Set(r.config.profiles.map((p) => p.id));
+    expect(r.config.questions[5]!.options.every((o) => o.profilePoints.every((pp) => ids.has(pp.profileId)))).toBe(true);
+    expect(r.changes).toHaveLength(2);
+  });
+
+  it("supprime, réduit, retitre, renomme et ajoute un profil", async () => {
+    expect((await refine("Supprime la dernière question")).config.questions).toHaveLength(4);
+    expect((await refine("Réduis à 3 questions")).config.questions).toHaveLength(3);
+    expect((await refine("Change le titre en « Mon nouveau titre »")).config.title).toBe("Mon nouveau titre");
+    const renamed = await refine("Renomme le profil « Équilibriste financier » en « Funambule »");
+    expect(renamed.config.profiles.map((p) => p.name)).toContain("Funambule");
+    const added = await refine("Ajoute un profil « Investisseur confirmé »");
+    expect(added.config.profiles).toHaveLength(4);
+    expect(added.config.profiles.at(-1)!.name).toBe("Investisseur confirmé");
+  });
+
+  it("ne modifie rien et explique quand la demande n'est pas comprise ; ne mute jamais l'original", async () => {
+    const r = await refine("Fais du café");
+    expect(r.changes).toEqual([]);
+    expect(r.hint).toContain("Je n'ai pas compris");
+    const { p, config } = await base();
+    const before = structuredClone(config);
+    await p.refineQuiz({ config, instruction: "Supprime la première question", tone: "professionnel", business });
+    expect(config).toEqual(before);
+  });
+});

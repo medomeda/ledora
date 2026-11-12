@@ -1,19 +1,21 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { getFeatures } from "@/lib/features";
 
-describe("modules au chaud", () => {
+describe("drapeaux de fonctionnalités", () => {
   afterEach(() => {
     delete process.env.LEADORA_FEATURE_AI;
+    delete process.env.LEADORA_FEATURE_ASSISTANT;
     delete process.env.LEADORA_FEATURE_PUBLICATIONS;
   });
 
-  it("Publications et Assistant IA sont désactivés par défaut", () => {
-    expect(getFeatures()).toEqual({ publications: false, ai: false });
+  it("par défaut : IA du workflow active, module Assistant et Publications au chaud", () => {
+    expect(getFeatures()).toEqual({ publications: false, ai: true, assistant: false });
   });
 
-  it("se réactivent par variable d'environnement", () => {
-    process.env.LEADORA_FEATURE_AI = "1";
+  it("se règlent par variable d'environnement", () => {
+    process.env.LEADORA_FEATURE_AI = "0";
+    process.env.LEADORA_FEATURE_ASSISTANT = "1";
     process.env.LEADORA_FEATURE_PUBLICATIONS = "1";
-    expect(getFeatures()).toEqual({ publications: true, ai: true });
+    expect(getFeatures()).toEqual({ publications: true, ai: false, assistant: true });
   });
 });

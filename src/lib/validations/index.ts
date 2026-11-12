@@ -184,4 +184,6 @@ export const aiGenerateQuizSchema = z.object({
   questionCount: z.number().int().min(3).max(10),
 });
 export const aiImproveSchema = z.object({ kind: z.enum(["title", "introduction", "question", "answer", "result", "cta"]), text: required(2000, "Saisissez le texte à améliorer."), instruction: text(300).optional().default("") });
+export const aiRefineSchema = z.object({ config: quizConfigSchema, instruction: required(300, "Décrivez le changement souhaité.") });
+export const aiCreateFromConfigSchema = z.object({ config: quizConfigSchema });
 export const aiAdoptSchema = z.object({ generationId: id });

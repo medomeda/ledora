@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/auth/session";
 
 const STEPS = [
-  { icon: PenLine, title: "Créez", text: "Posez vos questions, attribuez des points, décrivez vos profils." },
+  { icon: PenLine, title: "Créez", text: "Posez vos questions, attribuez des points, décrivez vos profils. L'IA peut proposer un premier jet." },
   { icon: Link2, title: "Publiez", text: "Un lien public prêt à partager sur Instagram, LinkedIn, WhatsApp ou par email." },
   { icon: MousePointerClick, title: "Capturez", text: "Le visiteur répond, laisse ses coordonnées, et reçoit son diagnostic sur-le-champ." },
   { icon: Wand2, title: "Qualifiez", text: "Score et profil sont calculés pour vous : vous savez qui est prêt à acheter." },

@@ -52,7 +52,7 @@ export function BusinessForm({ business, mode }: { business: Business; mode: "on
         <Field label="Domaine d'intervention" htmlFor="industry" optional hint="Ex. : coaching financier, marketing digital, langues…">
           <Input id="industry" {...register("industry")} />
         </Field>
-        <Field label="Description de votre activité" htmlFor="description" className="sm:col-span-2" hint="Présentez votre activité en quelques phrases.">
+        <Field label="Description de votre activité" htmlFor="description" className="sm:col-span-2" hint="Utilisée pour contextualiser les propositions de l'IA.">
           <Textarea id="description" rows={3} {...register("description")} />
         </Field>
         <Field label="Nom du responsable" htmlFor="managerName"><Input id="managerName" {...register("managerName")} /></Field>

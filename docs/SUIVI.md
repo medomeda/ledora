@@ -25,15 +25,16 @@ Les phases fonctionnelles du PRD §16 sont couvertes, **hors Publications et Ass
 | §6.7 CRM | ✅ Doublons, historique, tags (auto et manuels), notes, statuts, filtres, export CSV, effacement | — |
 | §6.8 Statistiques | ✅ Par quiz et globales, sources, profils, scores | — |
 | §6.9 Mon Business | ✅ Deux onglets : Informations (`/business`) et Offres et services (`/business/offers`) | ⬜ Stockage du logo |
-| §6.10 Assistant IA | ⏸ Au chaud (codé, testé, désactivé) | ⬜ Modèle de langage réel si réactivé |
+| §6.10 Assistant IA | ✅ Dans le workflow de création : génération, ajustements en langage naturel avec suivi et annulation, reformulations ; fournisseur simulé. Le module « Assistant IA » du menu reste au chaud. | ⬜ Modèle de langage réel |
 | §6.11 Publications | ⏸ Au chaud (codé, désactivé) | — |
-| §13 Tests | ✅ 52 tests (dont modules au chaud, séparation business/offres, prospects multi-quiz) (scoring, cycle de vie, versions, participation, CRM, isolation, stats, auth, seed) | ⬜ Tests d'intégration base, E2E Playwright |
+| §13 Tests | ✅ 55 tests (dont modules au chaud, séparation business/offres, prospects multi-quiz) (scoring, cycle de vie, versions, participation, CRM, isolation, stats, auth, seed) | ⬜ Tests d'intégration base, E2E Playwright |
 | §15 Plans et quotas | ✅ Structure et application des limites | ⬜ Paiement (hors MVP) |
 
 ## 3. Journal des livraisons
 
 | Date | Livraison |
 |---|---|
+| 12/11/2026 | **Assistance IA remise dans la création de quiz** (le module du menu reste au chaud, drapeau `LEADORA_FEATURE_ASSISTANT`). Création manuelle OU générée par IA ; sur une proposition comme sur un brouillon existant, ajustements demandés en langage naturel (« Ajoute une question sur l'épargne », « Réduis à 5 questions », « Renomme le profil… », « Ton plus dynamique »…) : l'IA propose une liste de changements, l'utilisateur applique, peut annuler ; suivi des ajustements dans l'écran de génération ; création du brouillon à partir de la proposition ajustée. Fournisseur simulé reconnaissant ces formulations. 55 tests. |
 | 12/11/2026 | **Profils et scoring : refonte ergonomique.** Profils = liste ordonnée simple (nom + phrase ; l'ordre remplace le champ « priorité » ; couleur automatique ; mode de calcul replié par défaut). Réponses : une liste déroulante « Indique : <profil> » à côté du texte de la réponse (remplace les pastilles et la pondération) ; résumé « N réponses par profil » avec alerte rouge sur un profil jamais indiqué (remplace la barre « points possibles »). Le modèle de données n'a pas changé ; la pondération reste possible dans les données. |
 | 12/11/2026 | **Questions simplifiées** : description, choix multiple et « obligatoire » masqués dans l'éditeur (interrupteur `SHOW_ADVANCED_QUESTION_FIELDS` dans `questions-step.tsx`) ; moteur, page publique et données inchangés, donc réactivables sans migration. Toute question créée reste à choix unique et obligatoire. |
 | 12/11/2026 | **Créateur de quiz : étapes réordonnées et scoring repensé.** Ordre : Informations, Profils, Questions, Résultats, Capture, Publication. Profils colorés ; chaque réponse se relie aux profils par pastilles (pondération facultative par question) ; « Points au score global » affiché seulement quand il sert ; barre « points possibles par profil » (alerte profil inatteignable) ; plages de score visuelles avec détection des trous et chevauchements. Aucun changement du modèle de données stocké (champ `color` facultatif ajouté aux profils). 52 tests. |

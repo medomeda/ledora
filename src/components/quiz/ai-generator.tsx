@@ -1,7 +1,8 @@
 "use client";
-import { Loader2, RefreshCw, Sparkles } from "lucide-react";
+import { Loader2, RefreshCw, Sparkles, Undo2 } from "lucide-react";
 import { useState, useTransition } from "react";
-import { adoptGenerationAction, generateQuizAction } from "@/actions/ai";
+import { createQuizFromAiAction, generateQuizAction } from "@/actions/ai";
+import { AiRefinePanel, ChangeList } from "@/components/quiz/ai-refine-panel";
 import { Alert } from "@/components/ui/feedback";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -17,7 +18,9 @@ export function AiQuizGenerator({ usage }: { usage: { used: number; limit: numbe
   const [tone, setTone] = useState("chaleureux");
   const [count, setCount] = useState(6);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ id: string; config: QuizConfig; provider: string } | null>(null);
+  const [result, setResult] = useState<{ config: QuizConfig; provider: string } | null>(null);
+  // Suivi des ajustements demandés sur la proposition (le dernier peut être annulé).
+  const [log, setLog] = useState<Array<{ instruction: string; changes: string[]; before: QuizConfig }>>([]);
   const [pending, start] = useTransition();
   const [adopting, startAdopt] = useTransition();
   const exhausted = usage.limit !== null && usage.used >= usage.limit;
@@ -25,7 +28,7 @@ export function AiQuizGenerator({ usage }: { usage: { used: number; limit: numbe
   const generate = () => start(async () => {
     setError(null);
     const r = await generateQuizAction({ brief, target, tone, questionCount: count });
-    if (r.ok) setResult({ id: r.data.generationId, config: r.data.config, provider: r.data.provider });
+    if (r.ok) { setResult({ config: r.data.config, provider: r.data.provider }); setLog([]); }
     else setError(r.fieldErrors?.brief ?? r.error);
   });
 
@@ -43,11 +46,26 @@ export function AiQuizGenerator({ usage }: { usage: { used: number; limit: numbe
           <div><p className="mb-2 text-sm font-semibold">{c.questions.length} questions</p><ol className="list-decimal space-y-1.5 pl-5 text-sm text-muted-foreground">{c.questions.map((q) => <li key={q.id}>{q.title}</li>)}</ol></div>
           <div><p className="mb-2 text-sm font-semibold">{c.profiles.length} profils de résultat</p><ul className="space-y-2 text-sm">{c.profiles.map((p) => <li key={p.id}><span className="font-medium">{p.name}</span><span className="block text-muted-foreground">{p.description}</span></li>)}</ul></div>
         </div>
+        <section className="space-y-4 rounded-xl border p-4" aria-labelledby="adjust-title">
+          <h3 id="adjust-title" className="font-display text-base font-semibold">Ajuster la proposition</h3>
+          {log.length > 0 && (
+            <ol className="space-y-3">
+              {log.map((l, i) => (
+                <li key={i} className="rounded-lg bg-muted/50 p-3">
+                  <p className="mb-2 text-sm font-medium">« {l.instruction} »</p>
+                  <ChangeList changes={l.changes} />
+                  {i === log.length - 1 && <Button variant="ghost" size="sm" className="mt-2 -ml-2" onClick={() => { setResult({ ...result, config: l.before }); setLog(log.slice(0, -1)); }}><Undo2 /> Annuler cet ajustement</Button>}
+                </li>
+              ))}
+            </ol>
+          )}
+          <AiRefinePanel config={c} onProposal={(p) => { setLog([...log, { instruction: p.instruction, changes: p.changes, before: result.config }]); setResult({ ...result, config: p.config }); }} />
+        </section>
         {error && <Alert tone="error">{error}</Alert>}
         <p className="text-sm text-muted-foreground">Rien n&apos;est publié : vous allez créer un brouillon que vous pourrez modifier librement avant publication.</p>
         <div className="flex flex-wrap gap-2">
-          <Button loading={adopting} onClick={() => startAdopt(async () => { const r = await adoptGenerationAction({ generationId: result.id }); if (r && !r.ok) setError(r.error); })}>Créer le brouillon et le modifier</Button>
-          <Button variant="outline" onClick={() => setResult(null)}><RefreshCw /> Reformuler mon besoin</Button>
+          <Button loading={adopting} onClick={() => startAdopt(async () => { const r = await createQuizFromAiAction({ config: result.config }); if (r && !r.ok) setError(r.error); })}>Créer le brouillon et le modifier</Button>
+          <Button variant="outline" onClick={() => { setResult(null); setLog([]); }}><RefreshCw /> Reformuler mon besoin</Button>
         </div>
       </div>
     );

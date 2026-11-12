@@ -1,6 +1,7 @@
 import { blankConfig, blankOption, blankProfile, blankQuestion, estimateMinutes } from "@/lib/quiz/factory";
 import type { QuizConfig } from "@/types/domain";
-import type { AiProvider, BusinessContext, GenerateQuizInput, ImproveInput, Tone } from "@/services/ai/types";
+import { REFINE_EXAMPLES } from "@/lib/constants/ai-examples";
+import type { AiProvider, BusinessContext, GenerateQuizInput, ImproveInput, RefineInput, RefineResult, Tone } from "@/services/ai/types";
 
 /**
  * Fournisseur SIMULÉ : génération déterministe à partir de banques de questions par thème. Il tient lieu de modèle de
@@ -167,6 +168,10 @@ export class MockAiProvider implements AiProvider {
     return config;
   }
 
+  async refineQuiz(input: RefineInput): Promise<RefineResult> {
+    return refineByRules(input);
+  }
+
   async improve(input: ImproveInput): Promise<string[]> {
     const t = input.text.trim().replace(/\s+/g, " ");
     const clean = t.replace(/[.!?…]+$/, "");
@@ -194,3 +199,111 @@ function capitalize(v: string) {
 }
 
 export const toContext = (b: BusinessContext) => b;
+
+// ---- Ajustements par règles (simulation) ------------------------------------------------------------------------
+/** Un vrai modèle de langage comprendra des demandes libres ; le fournisseur simulé reconnaît un petit jeu de formulations. */
+export { REFINE_EXAMPLES };
+
+const NUMBERS: Record<string, number> = { un: 1, une: 1, deux: 2, trois: 3, quatre: 4, cinq: 5 };
+const strip = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+function extractGroup(orig: string, m: RegExpExecArray & { indices?: Array<[number, number] | undefined> }, g: number): string {
+  const idx = m.indices?.[g];
+  return idx ? orig.slice(idx[0], idx[1]).trim().replace(/^[«"“']+|[»"”']+$/g, "").trim() : "";
+}
+
+const ANSWER_SETS = [
+  ["Je maîtrise bien ce point", "J'ai des bases mais pas de méthode", "C'est encore flou pour moi"],
+  ["Je n'ai pas de blocage particulier", "Je me heurte parfois à des difficultés", "Je suis souvent bloqué(e)"],
+  ["Régulièrement, de façon organisée", "De temps en temps", "Rarement, voire jamais"],
+];
+const QUESTION_TEMPLATES = [(t: string) => `Où en êtes-vous concernant ${t} ?`, (t: string) => `Quel est votre principal frein sur ${t} ?`, (t: string) => `À quelle fréquence travaillez-vous sur ${t} ?`];
+
+function refineByRules({ config: input, instruction, tone, business }: RefineInput): RefineResult {
+  const config = structuredClone(input);
+  const changes: string[] = [];
+  const orig = instruction.trim();
+  const norm = strip(orig);
+  const re = (src: string) => new RegExp(src, "di");
+  const run = (r: RegExp) => r.exec(norm) as (RegExpExecArray & { indices?: Array<[number, number] | undefined> }) | null;
+
+  // Titre
+  let m = run(re("(?:change|modifie|remplace)\\s+le\\s+titre\\s+(?:en|par|:)\\s*(.+)$"));
+  if (m) { const v = extractGroup(orig, m, 1); if (v) { config.title = v.slice(0, 120); changes.push(`Titre : « ${config.title} »`); } }
+
+  // Renommer un profil
+  m = run(re("renomme\\s+(?:le\\s+profil\\s+)?(.+?)\\s+en\\s+(.+)$"));
+  if (m) {
+    const from = strip(extractGroup(orig, m, 1)); const to = extractGroup(orig, m, 2);
+    const p = config.profiles.find((x) => strip(x.name) === from);
+    if (p && to) { changes.push(`Profil « ${p.name} » renommé en « ${to} »`); p.name = to.slice(0, 80); if (p.resultTitle) p.resultTitle = p.name; }
+    else changes.push(`Profil « ${extractGroup(orig, m, 1)} » introuvable : aucun renommage`);
+  }
+
+  // Ajouter un profil
+  m = run(re("ajoute\\s+un\\s+profil(?:\\s+(?:nomme|appele|:)?\\s*(.+))?$"));
+  if (m && config.profiles.length < 8) {
+    const name = (m.indices?.[1] ? extractGroup(orig, m, 1) : "") || "Nouveau profil";
+    const profile = blankProfile(name.slice(0, 80), 0);
+    profile.ctaUrl = business.bookingUrl;
+    config.profiles.push(profile);
+    config.profiles.forEach((p, i) => (p.priority = config.profiles.length - i));
+    changes.push(`Profil « ${profile.name} » ajouté (à relier à des réponses et à décrire dans l'étape Résultats)`);
+  }
+
+  // Ajouter des questions
+  m = run(re("ajoute\\s+(une|un|deux|trois|quatre|cinq|\\d+)\\s+questions?(?:\\s+(?:sur|a propos de|concernant|autour de)\\s+(.+))?$"));
+  if (m) {
+    const word = norm.slice(m.indices![1]![0], m.indices![1]![1]);
+    const n = Math.min(NUMBERS[word] ?? (Number(word) || 1), 5);
+    const topic = (m.indices?.[2] ? extractGroup(orig, m, 2) : "") || "votre situation";
+    const profiles = config.profiles;
+    for (let i = 0; i < n && config.questions.length < 30; i++) {
+      const q = blankQuestion(QUESTION_TEMPLATES[(config.questions.length + i) % 3]!(topic));
+      const answers = ANSWER_SETS[(config.questions.length + i) % 3]!;
+      q.options = answers.map((label, k) => {
+        const o = blankOption(label);
+        o.points = 3 - k;
+        if (profiles.length > 0) o.profilePoints = [{ profileId: profiles[Math.min(k, profiles.length - 1)]!.id, points: 1 }];
+        return o;
+      });
+      config.questions.push(q);
+      changes.push(`Question ajoutée : « ${q.title} »`);
+    }
+    config.estimatedMinutes = estimateMinutes(config.questions.length);
+  }
+
+  // Supprimer une question
+  m = run(re("supprime\\s+la\\s+(derniere|premiere)\\s+question"));
+  const byNumber = run(re("supprime\\s+la\\s+question\\s+(\\d+)"));
+  if ((m || byNumber) && config.questions.length > 1) {
+    const idx = m ? (norm.slice(m.indices![1]![0], m.indices![1]![1]) === "derniere" ? config.questions.length - 1 : 0) : Number(norm.slice(byNumber!.indices![1]![0], byNumber!.indices![1]![1])) - 1;
+    const [removed] = idx >= 0 && idx < config.questions.length ? config.questions.splice(idx, 1) : [];
+    if (removed) { changes.push(`Question supprimée : « ${removed.title} »`); config.estimatedMinutes = estimateMinutes(config.questions.length); }
+  }
+
+  // Réduire le nombre de questions
+  m = run(re("(?:reduis|limite|garde)\\s+(?:a|aux?)\\s+(\\d+)\\s+questions?"));
+  if (m) {
+    const n = Math.max(1, Number(norm.slice(m.indices![1]![0], m.indices![1]![1])));
+    if (n < config.questions.length) { changes.push(`Quiz réduit à ${n} questions (${config.questions.length - n} supprimée${config.questions.length - n > 1 ? "s" : ""})`); config.questions = config.questions.slice(0, n); config.estimatedMinutes = estimateMinutes(n); }
+  }
+
+  // Ton
+  m = run(re("ton\\s+(?:plus\\s+)?(chaleureux|professionnel|dynamique|expert)"));
+  if (m) {
+    const t = norm.slice(m.indices![1]![0], m.indices![1]![1]) as Tone;
+    config.introduction = TONE_INTRO[t](business.name || "votre coach", "votre situation");
+    changes.push(`Introduction réécrite sur un ton ${t}`);
+  }
+
+  // Raccourcir l'introduction
+  if (/(raccourcis|resume)\s+l.?introduction/.test(norm)) {
+    const first = config.introduction.split(/(?<=[.!?])\s+/)[0] ?? config.introduction;
+    if (first !== config.introduction) { config.introduction = first; changes.push("Introduction raccourcie à sa première phrase"); }
+  }
+  void tone;
+
+  if (changes.length === 0) return { config: input, changes: [], hint: "Je n'ai pas compris cette demande. En mode simulation, je reconnais par exemple : " + REFINE_EXAMPLES.slice(0, 4).map((e) => `« ${e} »`).join(", ") + "." };
+  return { config, changes };
+}

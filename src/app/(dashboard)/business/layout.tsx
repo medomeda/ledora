@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/ui/page-header";
 export default function BusinessLayout({ children }: { children: ReactNode }) {
   return (
     <div className="max-w-3xl">
-      <PageHeader title="Mon Business" description="Votre activité et vos offres. Ces informations personnalisent vos quiz publics." />
+      <PageHeader title="Mon Business" description="Votre activité et vos offres. Ces informations personnalisent vos quiz publics et nourrissent les propositions de l'IA." />
       <TabNav label="Mon Business" tabs={[{ href: "/business", label: "Informations" }, { href: "/business/offers", label: "Offres et services" }]} />
       {children}
     </div>

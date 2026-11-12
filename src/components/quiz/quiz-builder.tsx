@@ -1,11 +1,13 @@
 "use client";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { ArrowLeft, BarChart3, Check, CircleAlert, Eye, Loader2, Rocket, X } from "lucide-react";
+import { ArrowLeft, BarChart3, Check, CircleAlert, Eye, Loader2, Rocket, Sparkles, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { publishQuizAction, saveQuizAction, setSlugAction, unpublishQuizAction } from "@/actions/quizzes";
+import { AiRefineDialog } from "@/components/quiz/ai-refine-dialog";
+import { useFeatures } from "@/components/layout/features-context";
 import { PreviewFrame } from "@/components/quiz/preview-frame";
 import { CaptureStep } from "@/components/quiz/steps/capture-step";
 import { GeneralStep } from "@/components/quiz/steps/general-step";
@@ -62,6 +64,8 @@ export function QuizBuilder({ initialConfig, initialMeta, brand, bookingUrl }: {
   const [slugError, setSlugError] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const features = useFeatures();
   const configRef = useRef(config);
   const versionRef = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -103,6 +107,14 @@ export function QuizBuilder({ initialConfig, initialMeta, brand, bookingUrl }: {
     window.addEventListener("beforeunload", h);
     return () => window.removeEventListener("beforeunload", h);
   }, [saveState]);
+
+  /** Remplace tout le brouillon (proposition IA appliquée, ou retour arrière) ; l'enregistrement automatique prend le relais. */
+  const replaceConfig = useCallback((next: QuizConfig) => update((c) => void Object.assign(c, structuredClone(next))), [update]);
+  const applyAi = (proposal: { config: QuizConfig; changes: string[] }) => {
+    const before = structuredClone(configRef.current);
+    replaceConfig(proposal.config);
+    toast.success(`${proposal.changes.length} changement${proposal.changes.length > 1 ? "s" : ""} appliqué${proposal.changes.length > 1 ? "s" : ""}.`, { duration: 10000, action: { label: "Annuler", onClick: () => { replaceConfig(before); toast.info("Changements annulés."); } } });
+  };
 
   const issues = useMemo(() => validateForPublish(config), [config]);
   const published = meta.status === "published";
@@ -163,6 +175,7 @@ export function QuizBuilder({ initialConfig, initialMeta, brand, bookingUrl }: {
         {/* Actions : toujours en haut à droite, sur une seule ligne, quelle que soit la longueur du titre. */}
         <div className="flex shrink-0 items-center gap-2 md:pt-7">
           {meta.participants > 0 && <Button asChild variant="ghost" className="whitespace-nowrap"><Link href={`/lead-magnets/${meta.id}/stats`}><BarChart3 /> Statistiques</Link></Button>}
+          {features.ai && <Button variant="outline" className="whitespace-nowrap" onClick={() => setAiOpen(true)} aria-label="Ajuster avec l'IA"><Sparkles /> <span className="hidden xl:inline">Ajuster avec l&apos;IA</span><span className="xl:hidden">IA</span></Button>}
           <Button variant="outline" className="whitespace-nowrap" onClick={() => setPreviewOpen(true)}><Eye /> Aperçu</Button>
           <Button className="whitespace-nowrap" onClick={() => setStep("publish")}><Rocket /> {published ? "Publication" : "Publier"}</Button>
         </div>
@@ -198,6 +211,8 @@ export function QuizBuilder({ initialConfig, initialMeta, brand, bookingUrl }: {
         <Button variant="ghost" disabled={step === "general"} onClick={() => setStep(STEPS[Math.max(0, STEPS.findIndex((s) => s.id === step) - 1)]!.id)}><ArrowLeft /> Précédent</Button>
         {step !== "publish" && <Button variant="outline" onClick={() => setStep(STEPS[STEPS.findIndex((s) => s.id === step) + 1]!.id)}>Étape suivante</Button>}
       </div>
+
+      {features.ai && <AiRefineDialog open={aiOpen} onOpenChange={setAiOpen} config={config} onApply={applyAi} />}
 
       <DialogPrimitive.Root open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogPrimitive.Portal>

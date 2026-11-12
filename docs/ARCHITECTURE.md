@@ -2,12 +2,21 @@
 
 Monolithe modulaire Next.js (App Router). Pas de backend séparé. Voir le [PRD](PRD.md) §8 et §9.
 
-## Modules au chaud
+## Drapeaux de fonctionnalités
 
-`src/lib/features.ts` : Publications (`LEADORA_FEATURE_PUBLICATIONS`) et Assistant IA (`LEADORA_FEATURE_AI`) sont désactivés par
-défaut. Leur code reste en place (services, actions, pages, tests) ; le drapeau masque le menu et les boutons « Améliorer
-avec l'IA » / l'onglet IA de création (via `FeaturesProvider`), répond 404 aux pages et refuse les actions. Le quota de
-générations IA n'apparaît plus dans les paramètres. Réactivation = variable d'environnement, sans modification de code.
+`src/lib/features.ts` : `ai` (IA dans la création de quiz, **active** par défaut, `LEADORA_FEATURE_AI=0` pour couper),
+`assistant` (page « Assistant IA » du menu, **au chaud**, `LEADORA_FEATURE_ASSISTANT=1`) et `publications` (**au chaud**,
+`LEADORA_FEATURE_PUBLICATIONS=1`). Un module au chaud garde son code (services, actions, pages, tests) ; le drapeau masque le
+menu, répond 404 aux pages et refuse les actions. `FeaturesProvider` expose les drapeaux aux composants clients.
+
+### IA dans le workflow de création
+
+`AiProvider` (génération, reformulation, **ajustement** `refineQuiz`). Le serveur renvoie toujours une **proposition** (config
+complète + liste lisible des changements) ; rien n'est écrit tant que l'utilisateur ne valide pas. Création : `generateQuizAction`
+→ relecture → `refineQuizAction` autant de fois que voulu (historique et annulation côté client) → `createQuizFromAiAction`
+(brouillon, jamais publié). Dans le créateur : `refineQuizAction` sur le brouillon courant, application par remplacement du
+brouillon avec annulation. Chaque appel est compté dans les quotas (`aiGenerations`, types `quiz`, `improve`, `refine`).
+Le fournisseur simulé applique des règles sur un jeu de formulations ; un vrai modèle les remplacera derrière la même interface.
 
 ## Couches
 

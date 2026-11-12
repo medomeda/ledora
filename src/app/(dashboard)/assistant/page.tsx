@@ -21,7 +21,7 @@ export const metadata: Metadata = { title: "Assistant IA" };
 export const dynamic = "force-dynamic";
 
 export default async function AssistantPage() {
-  if (!getFeatures().ai) notFound();
+  if (!getFeatures().assistant) notFound();
   const user = await requireUser("/assistant");
   const ctx = ctxFor(user.id);
   const { usage, history, business } = read((s) => { const b = getBusiness(s, ctx); return { business: b, usage: getUsage(s, b, ctx.now), history: listGenerations(s, ctx, 5) }; });

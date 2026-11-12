@@ -33,11 +33,29 @@ export interface ImproveInput {
   business: BusinessContext;
 }
 
+export interface RefineInput {
+  config: QuizConfig;
+  /** Demande d'ajustement en langage naturel : « ajoute une question sur l'épargne », « ton plus dynamique »… */
+  instruction: string;
+  tone: Tone;
+  business: BusinessContext;
+}
+
+export interface RefineResult {
+  /** Proposition complète après ajustement : l'appelant la présente à l'utilisateur, qui accepte ou refuse. */
+  config: QuizConfig;
+  /** Liste lisible des changements effectués (vide si rien n'a été compris). */
+  changes: string[];
+  /** Aide affichée quand la demande n'a pas été comprise. */
+  hint?: string;
+}
+
 export interface AiProvider {
   readonly name: string;
   readonly model: string;
   generateQuiz(input: GenerateQuizInput): Promise<QuizConfig>;
   improve(input: ImproveInput): Promise<string[]>;
+  refineQuiz(input: RefineInput): Promise<RefineResult>;
 }
 
 /** Erreur du fournisseur (indisponible, limite atteinte…) : message affichable tel quel. */

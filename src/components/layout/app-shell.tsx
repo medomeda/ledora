@@ -13,13 +13,13 @@ import { useFeatures } from "@/components/layout/features-context";
 import { initials } from "@/lib/utils/text";
 import { toast } from "sonner";
 
-const NAV: Array<{ href: string; label: string; icon: typeof Gauge; feature?: "publications" | "ai" }> = [
+const NAV: Array<{ href: string; label: string; icon: typeof Gauge; feature?: "publications" | "assistant" }> = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
   { href: "/business", label: "Mon Business", icon: Store },
   { href: "/lead-magnets", label: "Lead Magnets", icon: Target },
   { href: "/crm", label: "CRM", icon: Users },
   { href: "/publications", label: "Publications", icon: CalendarDays, feature: "publications" },
-  { href: "/assistant", label: "Assistant IA", icon: Bot, feature: "ai" },
+  { href: "/assistant", label: "Assistant IA", icon: Bot, feature: "assistant" },
   { href: "/settings", label: "Paramètres", icon: Settings },
 ];
 
