@@ -57,7 +57,7 @@ function seed(s: DbState) {
 
   // ---- Comptes -----------------------------------------------------------------------------------------------
   const { user, business } = register(s, { firstName: "Aïcha", lastName: "Diallo", email: "demo@leadora.app", password: DEMO_PASSWORD }, new Date(now.getTime() - 40 * 86400000));
-  user.emailVerifiedAt = new Date(now.getTime() - 40 * 86400000).toISOString();
+  user.emailVerified = true;
   Object.assign(business, {
     name: "Aïcha Diallo Coaching",
     slug: uniqueBusinessSlug(s, "aicha-diallo-coaching"),
@@ -80,7 +80,7 @@ function seed(s: DbState) {
   };
 
   const empty = register(s, { firstName: "Nouveau", lastName: "Testeur", email: "nouveau@leadora.app", password: DEMO_PASSWORD }, now);
-  empty.user.emailVerifiedAt = now.toISOString();
+  empty.user.emailVerified = true;
 
   // ---- Quiz --------------------------------------------------------------------------------------------------
   const ai = new MockAiProvider();
@@ -232,19 +232,19 @@ function seedPlatform(s: DbState, now: Date) {
   const day = 86400000;
   const admin = register(s, { firstName: "Équipe", lastName: "Leadora", email: "admin@leadora.app", password: DEMO_PASSWORD }, new Date(now.getTime() - 120 * day));
   admin.user.role = "admin";
-  admin.user.emailVerifiedAt = admin.user.createdAt;
+  admin.user.emailVerified = true;
   s.businesses = s.businesses.filter((b) => b.ownerId !== admin.user.id);
   // Équipe : un support et un profil en lecture seule (mêmes identifiants), et une invitation en attente.
   for (const [first, last, email, role, loginDays, age] of [["Awa", "Support", "support@leadora.app", "support", 1, 80], ["Marc", "Lecture", "lecture@leadora.app", "readonly", 6, 40]] as const) {
     const { user: member } = register(s, { firstName: first, lastName: last, email, password: DEMO_PASSWORD }, new Date(now.getTime() - age * day));
     member.role = role;
-    member.emailVerifiedAt = member.createdAt;
+    member.emailVerified = true;
     member.lastLoginAt = new Date(now.getTime() - loginDays * day).toISOString();
     s.businesses = s.businesses.filter((b) => b.ownerId !== member.id);
   }
   const invited = register(s, { firstName: "Nadia", lastName: "Invitée", email: "nadia@leadora.app", password: "Invitation1" }, new Date(now.getTime() - 2 * day));
   invited.user.role = "support";
-  s.credentials.find((c) => c.userId === invited.user.id)!.passwordHash = hashPassword(`${Math.random()}-inutilisable`);
+  s.accounts.find((a) => a.userId === invited.user.id)!.password = hashPassword(`${Math.random()}-inutilisable`);
   s.businesses = s.businesses.filter((b) => b.ownerId !== invited.user.id);
 
   const ai = new MockAiProvider();
@@ -267,7 +267,7 @@ function seedPlatform(s: DbState, now: Date) {
   specs.forEach((sp, n) => {
     const created = new Date(now.getTime() - sp.age * day);
     const { user, business } = register(s, { firstName: sp.first, lastName: sp.last, email: sp.email, password: DEMO_PASSWORD }, created);
-    if (sp.verified) user.emailVerifiedAt = created.toISOString();
+    if (sp.verified) user.emailVerified = true;
     user.lastLoginAt = sp.login === null ? null : new Date(now.getTime() - sp.login * day - 3600000).toISOString();
     Object.assign(business, { name: sp.brand, slug: uniqueBusinessSlug(s, sp.brand), activityType: sp.type, industry: sp.industry, managerName: `${sp.first} ${sp.last}`, contactEmail: sp.email, plan: sp.plan, onboardingCompletedAt: sp.quizzes > 0 ? created.toISOString() : null });
     const ctxBiz = { name: business.name, activityType: business.activityType, industry: business.industry, description: "", offers: [], bookingUrl: "" };

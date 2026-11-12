@@ -10,13 +10,13 @@ Liens : [PRD](PRD.md) · [Architecture et décisions](ARCHITECTURE.md) · [READM
 **Phase 1 — Application complète sur données simulées : livrée, prête à tester** (`npm run dev`, voir README).
 Les phases fonctionnelles du PRD §16 sont couvertes, **hors Publications et Assistant IA mis au chaud le 12/11/2026** (désactivés par drapeau, code conservé) avec des règles métier et des permissions réelles.
 
-**Phase 2 — Persistance et services réels : en cours.** ✅ PostgreSQL + Drizzle (12/11/2026). À venir : Better Auth, IA réelle, e-mails, stockage de fichiers, paiement (en attente d'autorisations).
+**Phase 2 — Persistance et services réels : en cours.** ✅ PostgreSQL + Drizzle (12/11/2026). ✅ Better Auth (12/11/2026). À venir : e-mails réels, IA réelle, stockage de fichiers, paiement (en attente d'autorisations).
 
 ## 2. Avancement par module du PRD
 
 | Module (PRD) | Phase 1 (simulée) | Phase 2 (réel) |
 |---|---|---|
-| §6.1 Authentification | ✅ Inscription, connexion, déconnexion, mot de passe oublié, confirmation d'email (simulée), profil | ⬜ Better Auth, e-mails |
+| §6.1 Authentification | ✅ **Better Auth** : inscription, connexion, déconnexion, mot de passe oublié, changement de mot de passe, sessions en base ; confirmation d'email (simulée), profil | ⬜ E-mails réels, vérification par lien |
 | §6.2 Onboarding | ✅ Facultatif, passable, checklist sur le dashboard | — |
 | §6.3 Dashboard | ✅ KPI, évolution, derniers leads, top quiz, activité, état vide | — |
 | §6.4 Lead Magnets | ✅ Quiz ; formulaires et PDF annoncés (« Bientôt ») | ⬜ Formulaires, PDF (V2) |
@@ -27,7 +27,7 @@ Les phases fonctionnelles du PRD §16 sont couvertes, **hors Publications et Ass
 | §6.9 Mon Business | ✅ Deux onglets : Informations (`/business`) et Offres et services (`/business/offers`) | ⬜ Stockage du logo |
 | §6.10 Assistant IA | ✅ Dans le workflow de création : génération, ajustements en langage naturel avec suivi et annulation, reformulations ; fournisseur simulé. Le module « Assistant IA » du menu reste au chaud. | ⬜ Modèle de langage réel |
 | §6.11 Publications | ⏸ Au chaud (codé, désactivé) | — |
-| §13 Tests | ✅ 81 tests (dont modules au chaud, séparation business/offres, prospects multi-quiz) (scoring, cycle de vie, versions, participation, CRM, isolation, stats, auth, seed) | ✅ 11 tests d'intégration sur PostgreSQL (PGlite) · ⬜ E2E Playwright |
+| §13 Tests | ✅ 81 tests (dont modules au chaud, séparation business/offres, prospects multi-quiz) (scoring, cycle de vie, versions, participation, CRM, isolation, stats, auth, seed) | ✅ 13 tests d'intégration sur PostgreSQL (PGlite, dont Better Auth) · ⬜ E2E Playwright |
 | §15 Plans et quotas | ✅ Structure et application des limites, **modifiables depuis l'administration** | ⬜ Paiement (hors MVP) |
 | Administration | ✅ Vue d'ensemble avec filtre de période, comptes, modération, offres et quotas, journal d'audit, réglages, **équipe avec rôles (Administrateur, Support, Lecture seule)** | ⬜ Envoi réel des invitations, impersonation tracée, facturation |
 
@@ -35,6 +35,7 @@ Les phases fonctionnelles du PRD §16 sont couvertes, **hors Publications et Ass
 
 | Date | Livraison |
 |---|---|
+| 12/11/2026 | **Better Auth.** Connexion, sessions (cookie signé, 14 jours, stockées dans `sessions`, révocables), réinitialisation et changement de mot de passe gérés par Better Auth sur les mêmes tables que l'application (`users` enrichie, `accounts`, `sessions`, `verifications` ; migration initiale regénérée). Compatibilité conservée : mots de passe hachés par notre scrypt, inscription atomique (utilisateur + compte + espace), liens d'administration et d'invitation au format Better Auth. Changement de mot de passe : les autres sessions sont fermées, la session courante est conservée. Collaborateur désactivé : connexion refusée et session invalide. Mode « mémoire + JSON » retiré (PGlite par défaut sans `DATABASE_URL`). `server/mailer.ts` : envoi d'emails simulé, branchable. Vérifié dans Chrome : inscription, déconnexion, mauvais mot de passe, oubli → lien → nouveau mot de passe (lien à usage unique), ancien mot de passe refusé, changement dans Paramètres, session conservée après redémarrage du serveur ; 93 tests dont 2 d'intégration Better Auth sur du SQL réel. |
 | 12/11/2026 | **Aperçu du Design : zone de droite plus haute.** Hauteur du panneau passée de « hauteur de fenêtre − 17 rem » à « hauteur de fenêtre − 8 rem » (entre 36 et 62 rem), toujours collé en haut de la page au défilement. Mesuré : à 1366×850, panneau de 578 → 722 px et plus aucun défilement dans l'aperçu (l'écran Résultat avait 39 px) ; à 1280×720, de 448 → 592 px (défilement de 169 px sur le Résultat réduit à 25 px, nul sur les autres écrans) ; à 1920×1000, aucun défilement. |
 | 12/11/2026 | **Onglet Design : ergonomie et aperçu repensés.** Réglages : un groupe à la fois, choisi par six tuiles (Thème, Typographie, En-tête, Disposition, Style, Pied de page), au lieu d'une longue pile de cartes ; couleurs en lignes lisibles (nom, pastille, code, valeur du thème en indication) ; encadré d'exemple de la typographie supprimé ; « Réinitialiser » dans l'en-tête du groupe. Aperçu : l'écran simulé garde ses vraies dimensions puis est mis à l'échelle (zoom affiché) pour être visible en entier sans défilement ; l'échelle ne descend pas sous 55 % (au-delà, un défilement apparaît dans le cadre, seul défilement de l'aperçu) ; commandes d'appareil et d'écran sur une seule ligne ; panneau dimensionné pour tenir dans la hauteur de la fenêtre. Mesuré (1366×850) : aucun défilement dans l'aperçu pour l'introduction, la question, le formulaire et le mobile (zoom 62–65 %) ; l'écran Résultat, très long, reste à 55 % avec 39 px de défilement ; à 1920×1000, plus aucun défilement (71–87 %). |
 | 12/11/2026 | **Menus déroulants et fenêtres sans décalage.** Cause : Radix verrouille le défilement de la page à l'ouverture d'un menu et compense la barre de défilement par une marge de 15 px, ce qui décalait la pastille du compte (15 px) et le contenu centré (7,5 px). Les menus déroulants sont désormais non modaux (ils ne bloquent plus la page, et se ferment toujours au clic extérieur et à Échap) ; la compensation des fenêtres modales est neutralisée puisque `scrollbar-gutter: stable` réserve déjà la place. Mesuré avec barres de défilement visibles : position de la pastille et du contenu identique avant / pendant / après, menu du compte et fenêtre d'invitation. |
@@ -79,7 +80,6 @@ Recommandation : bandeau de 6 KPI (actifs/total, nouveaux, taux d'activation, pa
 ## 5. Limites connues de la phase simulée
 
 - Les limiteurs de fréquence sont en mémoire (un seul processus) : à passer sur Redis avant un déploiement multi-instances.
-- Mode « mémoire + fichier JSON » : uniquement pour une démonstration jetable (voir README pour PostgreSQL).
 - Les e-mails ne sont pas envoyés (lien de réinitialisation affiché à l'écran).
 - Pas de glisser-déposer pour réordonner : boutons monter / descendre.
 - Les images (logo, couvertures) sont stockées en data URL dans la base : à déplacer vers un stockage de fichiers.

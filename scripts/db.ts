@@ -16,10 +16,6 @@ try {
 }
 
 const cmd = process.argv[2];
-if (driverKind() === "memory") {
-  console.error("Aucune base configurée : définissez DATABASE_URL (PostgreSQL) ou LEADORA_DB=pglite. Voir .env.example.");
-  process.exit(1);
-}
 if (cmd === "migrate") {
   process.env.LEADORA_SEED_DEMO = "0";
   await getDriver();

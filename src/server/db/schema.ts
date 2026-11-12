@@ -9,36 +9,58 @@ const ts = (name: string) => timestamp(name, { withTimezone: true, mode: "date" 
 
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
+  /** Champs « user » de Better Auth : name, email, emailVerified, image, createdAt, updatedAt (+ nos champs métier ci-dessous). */
+  name: text("name").notNull().default(""),
   email: text("email").notNull(),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  image: text("image"),
   role: text("role").notNull().default("user"),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
-  emailVerifiedAt: ts("email_verified_at"),
   lastLoginAt: ts("last_login_at"),
   disabledAt: ts("disabled_at"),
   createdAt: ts("created_at").notNull(),
   updatedAt: ts("updated_at").notNull(),
 }, (t) => [uniqueIndex("users_email_uq").on(t.email)]);
 
-export const credentials = pgTable("credentials", {
-  userId: text("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
-  passwordHash: text("password_hash").notNull(),
-});
-
-export const sessions = pgTable("sessions", {
-  tokenHash: text("token_hash").primaryKey(),
+/** Table « account » de Better Auth : le mot de passe d'un utilisateur est le compte de fournisseur « credential ». */
+export const accounts = pgTable("accounts", {
+  id: text("id").primaryKey(),
+  accountId: text("account_id").notNull(),
+  providerId: text("provider_id").notNull(),
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  idToken: text("id_token"),
+  accessTokenExpiresAt: ts("access_token_expires_at"),
+  refreshTokenExpiresAt: ts("refresh_token_expires_at"),
+  scope: text("scope"),
+  password: text("password"),
+  createdAt: ts("created_at").notNull(),
+  updatedAt: ts("updated_at").notNull(),
+}, (t) => [index("accounts_user_idx").on(t.userId), uniqueIndex("accounts_provider_uq").on(t.providerId, t.accountId)]);
+
+/** Table « session » de Better Auth. */
+export const sessions = pgTable("sessions", {
+  id: text("id").primaryKey(),
+  token: text("token").notNull(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: ts("expires_at").notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: ts("created_at").notNull(),
+  updatedAt: ts("updated_at").notNull(),
+}, (t) => [uniqueIndex("sessions_token_uq").on(t.token), index("sessions_user_idx").on(t.userId)]);
+
+/** Table « verification » de Better Auth : jetons de réinitialisation de mot de passe (identifiant « reset-password:<jeton> », valeur = id de l'utilisateur). */
+export const verifications = pgTable("verifications", {
+  id: text("id").primaryKey(),
+  identifier: text("identifier").notNull(),
+  value: text("value").notNull(),
   expiresAt: ts("expires_at").notNull(),
   createdAt: ts("created_at").notNull(),
-}, (t) => [index("sessions_user_idx").on(t.userId)]);
-
-export const tokens = pgTable("tokens", {
-  tokenHash: text("token_hash").primaryKey(),
-  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  kind: text("kind").notNull(),
-  expiresAt: ts("expires_at").notNull(),
-  usedAt: ts("used_at"),
-}, (t) => [index("tokens_user_idx").on(t.userId)]);
+  updatedAt: ts("updated_at").notNull(),
+}, (t) => [index("verifications_identifier_idx").on(t.identifier)]);
 
 export const businesses = pgTable("businesses", {
   id: text("id").primaryKey(),

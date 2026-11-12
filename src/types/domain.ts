@@ -15,6 +15,8 @@ export type UserRole = "user" | "admin" | "support" | "readonly";
 
 export interface User {
   id: string;
+  /** Nom affiché (champ « name » de Better Auth) : prénom + nom. */
+  name: string;
   email: string;
   role: UserRole;
   /** Accès désactivé par un administrateur (collaborateur de l'équipe) : connexion refusée, sessions fermées. */
@@ -22,7 +24,7 @@ export interface User {
   lastLoginAt: ISODateTime | null;
   firstName: string;
   lastName: string;
-  emailVerifiedAt: ISODateTime | null;
+  emailVerified: boolean;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
 }

@@ -59,11 +59,11 @@ async function loadBusinessData(tx: Tx, s: DbState, businessId: string) {
 }
 
 async function loadUserCore(tx: Tx, s: DbState, userId: string) {
-  [s.users, s.credentials, s.sessions, s.tokens, s.businesses] = await Promise.all([
+  [s.users, s.accounts, s.sessions, s.verifications, s.businesses] = await Promise.all([
     fetch(tx, "users", eq(t.users.id, userId)),
-    fetch(tx, "credentials", eq(t.credentials.userId, userId)),
+    fetch(tx, "accounts", eq(t.accounts.userId, userId)),
     fetch(tx, "sessions", eq(t.sessions.userId, userId)),
-    fetch(tx, "tokens", eq(t.tokens.userId, userId)),
+    fetch(tx, "verifications", eq(t.verifications.value, userId)),
     fetch(tx, "businesses", eq(t.businesses.ownerId, userId)),
   ]);
 }
@@ -122,27 +122,20 @@ async function load(tx: Tx, scope: Scope): Promise<DbState> {
 
   if ("email" in scope) {
     s.users = await fetch(tx, "users", eq(t.users.email, scope.email));
-    s.credentials = await fetch(tx, "credentials", inIds(t.credentials.userId, s.users.map((u) => u.id)));
+    s.accounts = await fetch(tx, "accounts", inIds(t.accounts.userId, s.users.map((u) => u.id)));
     s.reserved = await loadReserved(tx);
     return s;
   }
 
-  if ("token" in scope) {
-    s.tokens = await fetch(tx, "tokens", eq(t.tokens.tokenHash, scope.token));
-    const userIds = s.tokens.map((x) => x.userId);
-    [s.users, s.credentials, s.sessions] = await Promise.all([fetch(tx, "users", inIds(t.users.id, userIds)), fetch(tx, "credentials", inIds(t.credentials.userId, userIds)), fetch(tx, "sessions", inIds(t.sessions.userId, userIds))]);
+  if ("identifier" in scope) {
+    s.verifications = await fetch(tx, "verifications", eq(t.verifications.identifier, scope.identifier));
+    const userIds = s.verifications.map((x) => x.value);
+    [s.users, s.accounts, s.sessions] = await Promise.all([fetch(tx, "users", inIds(t.users.id, userIds)), fetch(tx, "accounts", inIds(t.accounts.userId, userIds)), fetch(tx, "sessions", inIds(t.sessions.userId, userIds))]);
     return s;
   }
 
-  if ("session" in scope) {
-    s.sessions = await fetch(tx, "sessions", eq(t.sessions.tokenHash, scope.session));
-    s.users = await fetch(tx, "users", inIds(t.users.id, s.sessions.map((x) => x.userId)));
-    return s;
-  }
-  // (cas restants : voir ci-dessus)
   return s;
 }
-
 
 type Snapshot = Map<TableSpec["key"], Map<string, string>>;
 

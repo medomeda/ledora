@@ -55,7 +55,7 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
         <Card className="lg:col-span-2">
           <CardHeader><div><CardTitle>Actions</CardTitle><CardDescription>Chaque action est consignée dans le journal d&apos;audit.</CardDescription></div></CardHeader>
           <CardBody>
-            <AccountActions businessId={b.id} ownerEmail={d.owner.email} plan={b.plan} suspended={b.status === "suspended"} emailVerified={!!d.owner.emailVerifiedAt} can={{ support: can(user.role, "account.support"), billing: can(user.role, "account.billing"), delete: can(user.role, "account.delete") }} impact={impact} />
+            <AccountActions businessId={b.id} ownerEmail={d.owner.email} plan={b.plan} suspended={b.status === "suspended"} emailVerified={d.owner.emailVerified} can={{ support: can(user.role, "account.support"), billing: can(user.role, "account.billing"), delete: can(user.role, "account.delete") }} impact={impact} />
           </CardBody>
         </Card>
         <div className="space-y-6">
@@ -72,7 +72,7 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
             <CardBody className="py-2"><dl className="divide-y">
               <Row k="Inscrit le">{fmtDate(b.createdAt)}</Row>
               <Row k="Dernière connexion">{d.owner.lastLoginAt ? fmtRelative(d.owner.lastLoginAt) : "Jamais"}</Row>
-              <Row k="Email">{d.owner.emailVerifiedAt ? <Badge tone="success">Confirmé</Badge> : <Badge tone="warning">Non confirmé</Badge>}</Row>
+              <Row k="Email">{d.owner.emailVerified ? <Badge tone="success">Confirmé</Badge> : <Badge tone="warning">Non confirmé</Badge>}</Row>
               <Row k="Sessions ouvertes">{d.usage.sessions}</Row>
               <Row k="Prospects">{d.account.leads}</Row>
               <Row k="Activité">{b.industry || "—"}</Row>

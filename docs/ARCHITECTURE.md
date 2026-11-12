@@ -59,7 +59,7 @@ service ; 3. écrivent **seulement la différence** (suppressions enfants d'abor
   perdue » ; les lectures s'exécutent en `REPEATABLE READ`. Testé : 60 écritures publiques simultanées, 60 enregistrées.
 - **Unicité** : emails, adresses de quiz et d'espace sont garantis par des index uniques ; `DbState.reserved` évite les
   collisions lors d'un chargement partiel, et une violation résiduelle devient une erreur « Adresse déjà utilisée ».
-- **Pilotes** (`LEADORA_DB`, `DATABASE_URL`) : PostgreSQL, PGlite (même SQL, embarqué) ou mémoire + JSON (défaut).
+- **Pilotes** : PostgreSQL (`DATABASE_URL`) ou PGlite (même SQL, embarqué, par défaut). Le mode « mémoire + fichier JSON » a été retiré : Better Auth exige une vraie base.
 - **Limites connues** : le chargement par espace n'est pas paginé (les pages de statistiques lisent toutes les visites de
   l'espace) et l'écriture est globalement sérialisée. Prochaines optimisations, sans toucher aux règles : agrégats SQL pour
   les statistiques, verrou par espace plutôt que global.
@@ -76,7 +76,7 @@ service ; 3. écrivent **seulement la différence** (suppressions enfants d'abor
 | Endpoint public | `POST /api/public/q/[slug]` (visit, start, contact, complete), validé par Zod, limité par IP et par quiz. | Route Handler HTTP pour un parcours sans session. |
 | Taux | Complétion = terminés ÷ démarrés ; conversion = leads ÷ visiteurs (sessions uniques). | Deux taux distincts (§6.3). |
 | IA (§6.10) | `AiProvider` (interface) ; `AI_PROVIDER=mock` génère localement à partir de banques par thème. Adopter une proposition crée un brouillon, jamais un quiz publié. Historique et quotas dans `aiGenerations`. | Fournisseur interchangeable ; l'IA propose, l'utilisateur valide. |
-| Authentification | Sessions maison (scrypt, cookie httpOnly, empreinte du jeton). Emails simulés : le lien de réinitialisation s'affiche à l'écran ; la confirmation d'email est un bouton. | À remplacer par Better Auth. |
+| Authentification | **Better Auth** (`lib/auth/auth.ts`) sur les tables `users`, `accounts` (mot de passe, fournisseur « credential »), `sessions`, `verifications` : session = cookie signé (14 jours, stockée en base, révocable), réinitialisation et changement de mot de passe, routes `/api/auth/*`. Mots de passe hachés par NOTRE scrypt (branché via `password.hash/verify`). L'inscription reste dans `services/auth.service.ts` (utilisateur + compte + espace en une transaction) puis `signInEmail` ouvre la session. Les liens émis par l'administration (réinitialisation, invitation) ont le format Better Auth et sont consommés par `auth.api.resetPassword`. Emails : `server/mailer.ts` (simulé : console + lien affiché à l'écran). | Remplacer le corps de `deliver()` pour un vrai fournisseur. |
 | Plans et quotas (§15) | `lib/constants/plans.ts` (quiz actifs, participations/mois, générations IA/mois), appliqués par les services. | Modifiable sans toucher au code métier. |
 | Images | Logo et couverture redimensionnés côté navigateur, stockés en data URL. | Pas de stockage de fichiers en phase simulée. |
 
@@ -127,7 +127,7 @@ génériques avec code de référence.
 ## Suite de la feuille de route
 
 1. ✅ Persistance PostgreSQL (voir ci-dessus).
-2. Better Auth à la place de `lib/auth/session.ts` et `services/auth.service.ts` (emails réels).
+2. ✅ Better Auth ; reste : emails réels (SMTP/Resend), vérification d'adresse par lien, connexion Google éventuelle, double authentification de l'administration.
 3. Fournisseur d'IA réel dans `services/ai/`.
 4. Stockage de fichiers pour logos et couvertures.
 5. ✅ Tests d'intégration sur PostgreSQL (PGlite) ; à ajouter : tests E2E Playwright.

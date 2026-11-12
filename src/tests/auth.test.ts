@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { authenticate, changePassword, isResetTokenValid, register, requestPasswordReset, resetPassword, verifyEmail } from "@/services/auth.service";
+import { authenticate, isResetTokenValid, issueResetToken, register, updateProfile } from "@/services/auth.service";
 import { makeWorld } from "@/tests/helpers";
 import { emptyState } from "@/server/db/store";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
@@ -25,30 +25,28 @@ describe("authentification", () => {
     expect(verifyPassword("y", hashPassword("x"))).toBe(false);
   });
 
-  it("réinitialise le mot de passe avec un jeton à usage unique qui expire", () => {
+  it("émet un jeton de réinitialisation au format Better Auth, unique par utilisateur, qui expire", () => {
     const w = makeWorld();
     const now = new Date();
-    const token = requestPasswordReset(w.s, "owner@test.dev", now)!;
-    expect(requestPasswordReset(w.s, "inconnu@test.dev", now)).toBeNull();
+    const token = issueResetToken(w.s, w.user.id, 3600_000, now);
+    expect(w.s.verifications[0]).toMatchObject({ identifier: `reset-password:${token}`, value: w.user.id });
     expect(isResetTokenValid(w.s, token, now)).toBe(true);
-    w.s.sessions.push({ tokenHash: "t", userId: w.user.id, expiresAt: new Date(now.getTime() + 1e6).toISOString(), createdAt: now.toISOString() });
-    resetPassword(w.s, token, "NouveauMdp2", now);
-    expect(w.s.sessions).toHaveLength(0); // sessions révoquées
-    expect(authenticate(w.s, "owner@test.dev", "NouveauMdp2")).not.toBeNull();
-    expect(() => resetPassword(w.s, token, "EncoreUnAutre3", now)).toThrow(/invalide/);
-    const expired = requestPasswordReset(w.s, "owner@test.dev", now)!;
-    expect(() => resetPassword(w.s, expired, "Autre1234", new Date(now.getTime() + 2 * 3600 * 1000))).toThrow(/expiré/);
+    expect(isResetTokenValid(w.s, token, new Date(now.getTime() + 2 * 3600_000))).toBe(false);
+    expect(isResetTokenValid(w.s, "inconnu", now)).toBe(false);
+    const second = issueResetToken(w.s, w.user.id, 3600_000, now);
+    expect(w.s.verifications).toHaveLength(1); // le précédent est remplacé
+    expect(isResetTokenValid(w.s, token, now)).toBe(false);
+    expect(isResetTokenValid(w.s, second, now)).toBe(true);
   });
 
-  it("vérifie l'email et change le mot de passe", () => {
+  it("crée le compte de connexion « credential » et tient le nom à jour", () => {
     const s = emptyState();
     const r = register(s, { firstName: "A", lastName: "B", email: "a@b.dev", password: "Motdepasse1" });
-    expect(r.user.emailVerifiedAt).toBeNull();
-    verifyEmail(s, r.verifyToken);
-    expect(s.users[0]!.emailVerifiedAt).not.toBeNull();
-    expect(() => changePassword(s, r.user.id, "faux", "Nouveau123", null)).toThrow(/incorrect/);
-    changePassword(s, r.user.id, "Motdepasse1", "Nouveau123", null);
-    expect(authenticate(s, "a@b.dev", "Nouveau123")).not.toBeNull();
+    expect(s.accounts).toHaveLength(1);
+    expect(s.accounts[0]).toMatchObject({ providerId: "credential", accountId: r.user.id, userId: r.user.id });
+    expect(r.user).toMatchObject({ name: "A B", emailVerified: false });
+    updateProfile(s, r.user.id, { firstName: "Alice", lastName: "Durand" });
+    expect(s.users[0]!.name).toBe("Alice Durand");
   });
 
   it("valide les formulaires avec Zod", () => {

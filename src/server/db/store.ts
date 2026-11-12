@@ -1,44 +1,56 @@
 import "server-only";
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { resolve } from "node:path";
 import type { AiGeneration, AuditLog, Business, Lead, LeadNote, LeadSubmission, LeadTag, PlatformSettings, Publication, Quiz, QuizSubmission, QuizVersion, QuizVisit, Tag, User } from "@/types/domain";
 
 /**
  * Accès aux données. Les services de règles métier (src/services) travaillent sur un `DbState` en mémoire ; ce module
- * le charge et le persiste, selon le pilote choisi :
- *  - PostgreSQL (`DATABASE_URL`) : le pilote de production. Chaque appel charge seulement ce dont sa `Scope` a besoin,
+ * le charge depuis PostgreSQL et en persiste la différence. Pilotes :
+ *  - PostgreSQL (`DATABASE_URL`) : développement et production. Chaque appel charge seulement ce dont sa `Scope` a besoin,
  *    exécute le service dans une transaction (un seul écrivain à la fois) et écrit la différence ;
- *  - PGlite (`LEADORA_DB=pglite`) : le même SQL, dans le processus, sans installation (développement, tests) ;
- *  - mémoire + fichier JSON (défaut) : la phase de démonstration d'origine, sans base.
+ *  - PGlite (défaut sans `DATABASE_URL`) : le même SQL, embarqué dans le processus, sans installation (`.data/pglite`).
+ * Better Auth (comptes, sessions) lit et écrit les MÊMES tables (users, accounts, sessions, verifications).
  */
-export interface Credential {
+
+/** Compte de connexion (table « account » de Better Auth). Le mot de passe est celui du fournisseur « credential ». */
+export interface Account {
+  id: string;
+  accountId: string;
+  providerId: string;
   userId: string;
-  /** scrypt — format « scrypt$N$r$p$sel$empreinte » */
-  passwordHash: string;
+  /** scrypt — format « scrypt$N$r$p$sel$empreinte » (voir lib/auth/password.ts, branché dans Better Auth). */
+  password: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
+/** Session de connexion (table « session » de Better Auth), gérée par Better Auth. */
 export interface SessionRow {
-  /** SHA-256 du jeton : le jeton brut n'est jamais stocké. */
-  tokenHash: string;
+  id: string;
+  token: string;
   userId: string;
+  expiresAt: string;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Jeton à usage unique (table « verification » de Better Auth) : `identifier` = « reset-password:<jeton> », `value` = id de l'utilisateur. */
+export interface Verification {
+  id: string;
+  identifier: string;
+  value: string;
   expiresAt: string;
   createdAt: string;
-}
-
-export interface TokenRow {
-  tokenHash: string;
-  userId: string;
-  kind: "reset_password" | "verify_email";
-  expiresAt: string;
-  usedAt: string | null;
+  updatedAt: string;
 }
 
 export interface DbState {
   version: number;
   users: User[];
-  credentials: Credential[];
+  accounts: Account[];
   sessions: SessionRow[];
-  tokens: TokenRow[];
+  verifications: Verification[];
   businesses: Business[];
   quizzes: Quiz[];
   quizVersions: QuizVersion[];
@@ -62,10 +74,10 @@ export interface DbState {
  *  - `{ user }` : l'espace de ce propriétaire et tout son contenu ;
  *  - `{ account: id }` : seulement l'utilisateur, ses identifiants, sessions, jetons et la fiche de son espace (léger) ;
  *  - `{ slug, session?, email? }` : un quiz public, la session et le prospect concernés ;
- *  - `{ email }` : connexion et inscription ; `{ token }` : jeton de réinitialisation ; `{ session }` : session d'un cookie ;
+ *  - `{ email }` : connexion et inscription ; `{ identifier }` : jeton de réinitialisation de mot de passe ;
  *  - `"admin"` : toute la plateforme (administration) ; `"settings"` : seulement les réglages.
  */
-export type Scope = "admin" | "settings" | { user: string } | { account: string } | { email: string } | { token: string } | { session: string } | { slug: string; session?: string; email?: string };
+export type Scope = "admin" | "settings" | { user: string } | { account: string } | { email: string } | { identifier: string } | { slug: string; session?: string; email?: string };
 
 export interface Driver {
   read<T>(scope: Scope, fn: (s: Readonly<DbState>) => T): Promise<T>;
@@ -80,9 +92,9 @@ export function emptyState(): DbState {
   return {
     version: SCHEMA_VERSION,
     users: [],
-    credentials: [],
+    accounts: [],
     sessions: [],
-    tokens: [],
+    verifications: [],
     businesses: [],
     quizzes: [],
     quizVersions: [],
@@ -100,13 +112,6 @@ export function emptyState(): DbState {
   };
 }
 
-type Holder = { state: DbState | null };
-const g = globalThis as typeof globalThis & { __leadoraDb?: Holder; __leadoraDriver?: Promise<Driver> };
-const holder: Holder = (g.__leadoraDb ??= { state: null });
-
-const persistEnabled = process.env.NODE_ENV !== "test" && process.env.LEADORA_DEMO_PERSIST !== "0";
-const dbPath = resolve(/* turbopackIgnore: true */ process.cwd(), process.env.LEADORA_DEMO_DB_PATH ?? ".data/leadora-demo.json");
-
 let seeder: ((state: DbState) => void) | null = null;
 
 /** Enregistré par le module de seed (évite une dépendance circulaire). */
@@ -114,82 +119,35 @@ export function registerSeeder(fn: (state: DbState) => void) {
   seeder = fn;
 }
 
-// ---- Pilote « mémoire + fichier JSON » ---------------------------------------------------------------------------
-
-function load(): DbState {
-  if (holder.state?.version === SCHEMA_VERSION) return holder.state;
-  holder.state = null;
-  if (persistEnabled && existsSync(dbPath)) {
-    try {
-      const parsed = JSON.parse(readFileSync(dbPath, "utf8")) as { version?: number };
-      if (parsed.version === SCHEMA_VERSION) {
-        holder.state = parsed as DbState;
-        return holder.state;
-      }
-    } catch {
-      // Fichier corrompu ou d'une autre version : on repart d'un jeu de démonstration propre.
-    }
-  }
-  const fresh = emptyState();
-  if (seeder) seeder(fresh);
-  holder.state = fresh;
-  persist(fresh);
-  return fresh;
-}
-
-function persist(state: DbState) {
-  if (!persistEnabled) return;
-  mkdirSync(dirname(dbPath), { recursive: true });
-  const tmp = `${dbPath}.tmp`;
-  writeFileSync(tmp, JSON.stringify(state));
-  renameSync(tmp, dbPath);
-}
-
-const memoryDriver: Driver = {
-  async read(_scope, fn) {
-    return fn(load());
-  },
-  async tx(_scope, fn) {
-    const draft = structuredClone(load());
-    const result = fn(draft);
-    holder.state = draft;
-    persist(draft);
-    return result;
-  },
-  async replaceAll(state) {
-    holder.state = state;
-    persist(state);
-  },
-  async isEmpty() {
-    return load().users.length === 0;
-  },
-};
+const g = globalThis as typeof globalThis & { __leadoraDriver?: Promise<{ driver: Driver; db: unknown }> };
 
 // ---- Choix du pilote ---------------------------------------------------------------------------------------------
 
-export type DriverKind = "postgres" | "pglite" | "memory";
-export const driverKind = (): DriverKind => (process.env.DATABASE_URL ? "postgres" : process.env.LEADORA_DB === "pglite" ? "pglite" : "memory");
+export type DriverKind = "postgres" | "pglite";
+export const driverKind = (): DriverKind => (process.env.DATABASE_URL ? "postgres" : "pglite");
 
-async function createDriver(): Promise<Driver> {
+async function createDriver(): Promise<{ driver: Driver; db: unknown }> {
   const kind = driverKind();
-  if (kind === "memory") return memoryDriver;
   const { createPgDriver } = await import("@/server/db/pg-driver");
   const folder = resolve(/* turbopackIgnore: true */ process.cwd(), "drizzle");
   let driver: Driver;
+  let db: unknown;
   if (kind === "postgres") {
     const { default: postgres } = await import("postgres");
     const { drizzle } = await import("drizzle-orm/postgres-js");
     const { migrate } = await import("drizzle-orm/postgres-js/migrator");
-    const db = drizzle(postgres(process.env.DATABASE_URL!, { max: Number(process.env.DATABASE_POOL ?? 10), onnotice: () => {} }));
-    await migrate(db, { migrationsFolder: folder });
-    driver = createPgDriver(db);
+    const pg = drizzle(postgres(process.env.DATABASE_URL!, { max: Number(process.env.DATABASE_POOL ?? 10), onnotice: () => {} }));
+    await migrate(pg, { migrationsFolder: folder });
+    driver = createPgDriver(pg);
+    db = pg;
   } else {
     const { PGlite } = await import("@electric-sql/pglite");
     const { drizzle } = await import("drizzle-orm/pglite");
     const { migrate } = await import("drizzle-orm/pglite/migrator");
-    const db = drizzle(new PGlite(process.env.LEADORA_PGLITE_DIR ?? resolve(/* turbopackIgnore: true */ process.cwd(), ".data/pglite")));
-    await migrate(db, { migrationsFolder: folder });
-    driver = createPgDriver(db);
+    const pg = drizzle(new PGlite(process.env.LEADORA_PGLITE_DIR ?? resolve(/* turbopackIgnore: true */ process.cwd(), ".data/pglite")));
+    await migrate(pg, { migrationsFolder: folder });
+    driver = createPgDriver(pg);
+    db = pg;
   }
   // Jeu de démonstration : par défaut hors production, sur une base vide uniquement.
   const seedDemo = (process.env.LEADORA_SEED_DEMO ?? (process.env.NODE_ENV === "production" ? "0" : "1")) === "1";
@@ -198,12 +156,21 @@ async function createDriver(): Promise<Driver> {
     seeder(fresh);
     await driver.replaceAll(fresh);
   }
-  return driver;
+  return { driver, db };
+}
+
+function getBoth() {
+  return (g.__leadoraDriver ??= createDriver());
 }
 
 /** Pilote partagé par tous les modules (une seule connexion, migrations jouées une fois). */
-export function getDriver(): Promise<Driver> {
-  return (g.__leadoraDriver ??= createDriver());
+export async function getDriver(): Promise<Driver> {
+  return (await getBoth()).driver;
+}
+
+/** Instance Drizzle partagée (utilisée par Better Auth pour lire et écrire les mêmes tables). */
+export async function getDb(): Promise<unknown> {
+  return (await getBoth()).db;
 }
 
 /** Lecture seule de l'état visible depuis `scope`. Ne jamais muter l'objet reçu. */

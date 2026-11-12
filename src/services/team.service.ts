@@ -4,8 +4,9 @@ import { normalizeEmail } from "@/lib/utils/text";
 import { isoNow, type Ctx } from "@/server/context";
 import type { DbState } from "@/server/db/store";
 import { conflict, invalidState, notFound, validation } from "@/server/errors";
-import { newId, newToken, sha256 } from "@/server/ids";
+import { newId, newToken } from "@/server/ids";
 import { recordAudit, requireStaff } from "@/services/admin.service";
+import { addCredential, issueResetToken } from "@/services/auth.service";
 import type { User } from "@/types/domain";
 
 /**
@@ -51,10 +52,7 @@ function assertAdminRemains(s: Readonly<DbState>, exceptUserId: string) {
 }
 
 function issueInvite(s: DbState, userId: string, now: Date): string {
-  const token = newToken();
-  s.tokens = s.tokens.filter((t) => !(t.userId === userId && t.kind === "reset_password"));
-  s.tokens.push({ tokenHash: sha256(token), userId, kind: "reset_password", expiresAt: new Date(now.getTime() + INVITE_TTL_MS).toISOString(), usedAt: null });
-  return `/reset-password/${token}`;
+  return `/reset-password/${issueResetToken(s, userId, INVITE_TTL_MS, now)}`;
 }
 
 export function inviteCollaborator(s: DbState, ctx: Ctx, input: { firstName: string; lastName: string; email: string; role: StaffRole }): { user: User; link: string } {
@@ -63,9 +61,11 @@ export function inviteCollaborator(s: DbState, ctx: Ctx, input: { firstName: str
   const email = normalizeEmail(input.email);
   if (s.users.some((u) => u.email === email)) throw conflict("Un compte existe déjà avec cette adresse email.", { email: "Adresse déjà utilisée." });
   const at = isoNow(ctx);
-  const user: User = { id: newId(), email, role: input.role, lastLoginAt: null, disabledAt: null, firstName: input.firstName.trim(), lastName: input.lastName.trim(), emailVerifiedAt: null, createdAt: at, updatedAt: at };
+  const firstName = input.firstName.trim();
+  const lastName = input.lastName.trim();
+  const user: User = { id: newId(), name: `${firstName} ${lastName}`.trim(), email, role: input.role, lastLoginAt: null, disabledAt: null, firstName, lastName, emailVerified: false, createdAt: at, updatedAt: at };
   s.users.push(user);
-  s.credentials.push({ userId: user.id, passwordHash: hashPassword(newToken()) }); // inutilisable tant que le lien n'est pas suivi
+  addCredential(s, user.id, hashPassword(newToken()), ctx.now); // inutilisable tant que le lien n'est pas suivi
   const link = issueInvite(s, user.id, ctx.now);
   recordAudit(s, ctx, admin, "team.invited", { type: "team", id: user.id, label: `${user.firstName} ${user.lastName}`.trim() || email }, `${email} · ${input.role}`);
   return { user, link };
@@ -116,8 +116,8 @@ export function removeCollaborator(s: DbState, ctx: Ctx, userId: string): void {
   if (u.id === admin.id) throw invalidState("Vous ne pouvez pas vous retirer vous-même.");
   if (u.role === "admin") assertAdminRemains(s, u.id);
   s.sessions = s.sessions.filter((x) => x.userId !== u.id);
-  s.tokens = s.tokens.filter((t) => t.userId !== u.id);
-  s.credentials = s.credentials.filter((c) => c.userId !== u.id);
+  s.verifications = s.verifications.filter((v) => v.value !== u.id);
+  s.accounts = s.accounts.filter((a) => a.userId !== u.id);
   s.users = s.users.filter((x) => x.id !== u.id);
   recordAudit(s, ctx, admin, "team.removed", { type: "team", id: u.id, label: u.email }, u.role);
 }

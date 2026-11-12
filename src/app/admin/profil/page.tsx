@@ -31,7 +31,7 @@ export default async function AdminProfilePage() {
           <Badge tone="ink">{role.label}</Badge>
         </CardBody>
         <dl className="grid gap-px border-t bg-border text-sm sm:grid-cols-3">
-          {[["Membre depuis", fmtDate(user.createdAt)], ["Dernière connexion", user.lastLoginAt ? fmtRelative(user.lastLoginAt) : "—"], ["Email", user.emailVerifiedAt ? "Confirmé" : "Non confirmé"]].map(([k, v]) => (
+          {[["Membre depuis", fmtDate(user.createdAt)], ["Dernière connexion", user.lastLoginAt ? fmtRelative(user.lastLoginAt) : "—"], ["Email", user.emailVerified ? "Confirmé" : "Non confirmé"]].map(([k, v]) => (
             <div key={k} className="bg-card px-5 py-3"><dt className="text-xs text-muted-foreground">{k}</dt><dd className="mt-0.5 font-medium">{v}</dd></div>
           ))}
         </dl>

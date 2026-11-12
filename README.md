@@ -4,9 +4,9 @@ Plateforme SaaS pour créer des quiz de diagnostic, collecter des prospects et l
 7 étapes avec assistance IA et design personnalisable, pages publiques, CRM et statistiques.
 
 > **Phase actuelle : application complète avec persistance PostgreSQL.**
-> Règles métier, permissions, validations et persistance (PostgreSQL + Drizzle) sont réelles et testées. Restent
-> simulés : l'envoi d'emails, le fournisseur d'IA, le stockage de fichiers et le paiement ; l'authentification est
-> maison (sécurisée) en attendant Better Auth. Voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+> Règles métier, permissions, validations, persistance (PostgreSQL + Drizzle) et authentification (Better Auth)
+> sont réelles et testées. Restent simulés : l'envoi d'emails (les liens s'affichent à l'écran), le fournisseur d'IA,
+> le stockage de fichiers ; le paiement n'est pas branché. Voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 > et [docs/SUIVI.md](docs/SUIVI.md). Cahier des charges : [docs/PRD.md](docs/PRD.md).
 
 ## Démarrer
@@ -18,13 +18,14 @@ npm run db:up                   # PostgreSQL 16 dans Docker (port 5440)
 npm run dev                     # http://localhost:3300 : migrations appliquées et jeu de démonstration chargé au 1er démarrage
 ```
 
-Trois modes de stockage, choisis par l'environnement :
+Deux modes de stockage, choisis par l'environnement :
 
 | Mode | Activation | Usage |
 |---|---|---|
 | **PostgreSQL** | `DATABASE_URL=postgres://…` | Développement et production |
-| **PGlite** (PostgreSQL embarqué, sans Docker) | `LEADORA_DB=pglite` | Essai rapide, données dans `.data/pglite` |
-| **Mémoire + fichier JSON** | rien (défaut) | Démonstration jetable, `.data/leadora-demo.json` |
+| **PGlite** (PostgreSQL embarqué, sans Docker) | rien (défaut) | Essai rapide, données dans `.data/pglite` |
+
+Authentification : Better Auth (`BETTER_AUTH_SECRET`, 32 caractères minimum, obligatoire en production ; voir `.env.example`).
 
 `npm run db:migrate` applique les migrations, `npm run db:reset` recharge le jeu de démonstration (efface tout),
 `npm run db:empty` vide la base, `npm run db:generate` produit une migration après une modification de `schema.ts`.
@@ -40,8 +41,7 @@ Comptes de démonstration (mot de passe `Leadora2026`, raccourcis sur la page de
 | `support@leadora.app` / `lecture@leadora.app` | Collaborateurs de l'équipe : rôles **Support** et **Lecture seule** (pour voir les permissions) |
 
 Quiz publics de démonstration : `/q/maturite-financiere` (design par défaut) et `/q/type-entrepreneur` (design personnalisé : thème Océan, titres en Fraunces, centré).
-Les données sont relatives à la date du jour, persistées dans `.data/leadora-demo.json`.
-Réinitialisation : `npm run demo:reset` puis redémarrage.
+Les données de démonstration sont relatives à la date du jour. Réinitialisation : `npm run db:reset` (efface tout).
 
 ## Scripts
 

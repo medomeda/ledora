@@ -3,9 +3,10 @@ import { ctxFor } from "@/server/context";
 import { emptyState, type DbState } from "@/server/db/store";
 import { seed } from "@/server/db/seed";
 import { AppError } from "@/server/errors";
-import { authenticate, isResetTokenValid, resetPassword } from "@/services/auth.service";
+import { authenticate, isResetTokenValid } from "@/services/auth.service";
 import * as admin from "@/services/admin.service";
 import { resolveRange } from "@/services/admin.service";
+import { hashPassword } from "@/lib/auth/password";
 import { planDef } from "@/lib/constants/plans";
 import { getPublicQuiz, createQuiz } from "@/services/quiz.service";
 import { startQuiz } from "@/services/public.service";
@@ -90,7 +91,7 @@ describe("administration : comptes", () => {
     for (const key of ["quizzes", "quizVersions", "quizVisits", "quizSubmissions", "leads", "leadSubmissions", "leadTags", "leadNotes", "tags", "publications", "aiGenerations"] as const) {
       expect((s[key] as Array<{ businessId?: string }>).some((x) => x.businessId === demoBiz.id), key).toBe(false);
     }
-    expect(s.credentials.some((c) => c.userId === owner.id)).toBe(false);
+    expect(s.accounts.some((c) => c.userId === owner.id)).toBe(false);
     expect(admin.listAudit(s, adminCtx).rows[0]!.action).toBe("account.deleted");
     // Les autres clients ne sont pas touchés.
     expect(s.businesses.length).toBeGreaterThan(10);
@@ -98,7 +99,7 @@ describe("administration : comptes", () => {
 
   it("émet un lien de réinitialisation et révoque les sessions", () => {
     const { s, adminCtx, demoBiz } = world();
-    s.sessions.push({ tokenHash: "x", userId: demoBiz.ownerId, expiresAt: new Date(Date.now() + 1e6).toISOString(), createdAt: new Date().toISOString() });
+    s.sessions.push({ id: "x", token: "x", userId: demoBiz.ownerId, expiresAt: new Date(Date.now() + 1e6).toISOString(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), ipAddress: null, userAgent: null });
     expect(admin.issueResetLink(s, adminCtx, demoBiz.id)).toMatch(/^\/reset-password\/.+/);
     expect(admin.revokeSessions(s, adminCtx, demoBiz.id)).toBe(1);
   });
@@ -185,7 +186,9 @@ describe("administration : équipe et rôles", () => {
     expect(authenticate(s, "leo@leadora.app", "Motdepasse1")).toBeNull();
     const token = link.split("/").pop()!;
     expect(isResetTokenValid(s, token)).toBe(true);
-    resetPassword(s, token, "Motdepasse1");
+    // Le mot de passe est ensuite choisi via Better Auth (voir persistence.test.ts) ; ici : le jeton est consommé et le compte de connexion remplacé.
+    s.verifications = s.verifications.filter((v) => v.identifier !== `reset-password:${token}`);
+    s.accounts.find((a) => a.userId === user.id)!.password = hashPassword("Motdepasse1");
     expect(authenticate(s, "leo@leadora.app", "Motdepasse1")?.role).toBe("support");
   });
 
@@ -205,7 +208,7 @@ describe("administration : équipe et rôles", () => {
   it("désactiver un accès ferme ses sessions et bloque ses permissions", () => {
     const { s, adminCtx } = world();
     const m = s.users.find((u) => u.email === "support@leadora.app")!;
-    s.sessions.push({ tokenHash: "t", userId: m.id, expiresAt: new Date(Date.now() + 1e6).toISOString(), createdAt: new Date().toISOString() });
+    s.sessions.push({ id: "t", token: "t", userId: m.id, expiresAt: new Date(Date.now() + 1e6).toISOString(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), ipAddress: null, userAgent: null });
     team.setMemberAccess(s, adminCtx, m.id, false);
     expect(s.sessions.some((x) => x.userId === m.id)).toBe(false);
     expect(code(() => admin.listAccounts(s, ctxFor(m.id)))).toBe("FORBIDDEN");

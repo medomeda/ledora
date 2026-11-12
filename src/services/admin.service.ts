@@ -3,7 +3,8 @@ import { isoNow, type Ctx } from "@/server/context";
 import type { DbState } from "@/server/db/store";
 import { can, isStaff, type Permission } from "@/lib/permissions/staff";
 import { forbidden, invalidState, notFound, validation } from "@/server/errors";
-import { newId, newToken, sha256 } from "@/server/ids";
+import { newId } from "@/server/ids";
+import { issueResetToken } from "@/services/auth.service";
 import type { AuditAction, AuditLog, Business, BusinessStatus, PlanId, PlanOverride, PlatformSettings, Quiz, QuizStatus, User } from "@/types/domain";
 
 /**
@@ -63,7 +64,7 @@ function accountRow(s: Readonly<DbState>, b: Business, now: Date): AccountRow {
     email: owner.email,
     plan: b.plan,
     status: b.status,
-    emailVerified: !!owner.emailVerifiedAt,
+    emailVerified: owner.emailVerified,
     createdAt: b.createdAt,
     lastLoginAt: owner.lastLoginAt,
     activeQuizzes: quizzes.filter((q) => q.status !== "archived").length,
@@ -113,7 +114,7 @@ export function listAccounts(s: Readonly<DbState>, ctx: Ctx, f: AccountFilters =
 export interface AccountDetail {
   account: AccountRow;
   business: Business;
-  owner: Pick<User, "id" | "email" | "firstName" | "lastName" | "role" | "createdAt" | "lastLoginAt" | "emailVerifiedAt">;
+  owner: Pick<User, "id" | "email" | "firstName" | "lastName" | "role" | "createdAt" | "lastLoginAt" | "emailVerified">;
   plan: ReturnType<typeof planDef>;
   usage: { aiMonth: number; sessions: number };
   quizzes: Array<{ id: string; title: string; slug: string; status: QuizStatus; participants: number; updatedAt: string }>;
@@ -128,7 +129,7 @@ export function getAccount(s: Readonly<DbState>, ctx: Ctx, businessId: string): 
   return {
     account: accountRow(s, business, ctx.now),
     business,
-    owner: { id: owner.id, email: owner.email, firstName: owner.firstName, lastName: owner.lastName, role: owner.role, createdAt: owner.createdAt, lastLoginAt: owner.lastLoginAt, emailVerifiedAt: owner.emailVerifiedAt },
+    owner: { id: owner.id, email: owner.email, firstName: owner.firstName, lastName: owner.lastName, role: owner.role, createdAt: owner.createdAt, lastLoginAt: owner.lastLoginAt, emailVerified: owner.emailVerified },
     plan: planDef(s, business.plan),
     usage: { aiMonth: s.aiGenerations.filter((g) => g.businessId === business.id && g.createdAt >= start && g.status === "success").length, sessions: s.sessions.filter((x) => x.userId === owner.id && new Date(x.expiresAt) > ctx.now).length },
     quizzes: s.quizzes
@@ -186,8 +187,9 @@ export function markEmailVerified(s: DbState, ctx: Ctx, businessId: string): voi
   const admin = requireStaff(s, ctx, "account.support");
   const b = businessOrThrow(s, businessId);
   const owner = s.users.find((u) => u.id === b.ownerId)!;
-  if (owner.emailVerifiedAt) return;
-  owner.emailVerifiedAt = isoNow(ctx);
+  if (owner.emailVerified) return;
+  owner.emailVerified = true;
+  owner.updatedAt = isoNow(ctx);
   recordAudit(s, ctx, admin, "account.email_verified", { type: "account", id: b.id, label: label(b) });
 }
 
@@ -195,9 +197,7 @@ export function markEmailVerified(s: DbState, ctx: Ctx, businessId: string): voi
 export function issueResetLink(s: DbState, ctx: Ctx, businessId: string): string {
   const admin = requireStaff(s, ctx, "account.support");
   const b = businessOrThrow(s, businessId);
-  const token = newToken();
-  s.tokens = s.tokens.filter((t) => !(t.userId === b.ownerId && t.kind === "reset_password"));
-  s.tokens.push({ tokenHash: sha256(token), userId: b.ownerId, kind: "reset_password", expiresAt: new Date(ctx.now.getTime() + 3600_000).toISOString(), usedAt: null });
+  const token = issueResetToken(s, b.ownerId, 3600_000, ctx.now);
   recordAudit(s, ctx, admin, "account.reset_link_issued", { type: "account", id: b.id, label: label(b) });
   return `/reset-password/${token}`;
 }
@@ -248,8 +248,8 @@ export function deleteAccount(s: DbState, ctx: Ctx, businessId: string, confirmE
   s.aiGenerations = s.aiGenerations.filter((g) => g.businessId !== b.id);
   s.businesses = s.businesses.filter((x) => x.id !== b.id);
   s.sessions = s.sessions.filter((x) => x.userId !== owner.id);
-  s.tokens = s.tokens.filter((t) => t.userId !== owner.id);
-  s.credentials = s.credentials.filter((c) => c.userId !== owner.id);
+  s.verifications = s.verifications.filter((v) => v.value !== owner.id);
+  s.accounts = s.accounts.filter((a) => a.userId !== owner.id);
   s.users = s.users.filter((u) => u.id !== owner.id);
   recordAudit(s, ctx, admin, "account.deleted", { type: "account", id: b.id, label: label(b) }, owner.email);
 }

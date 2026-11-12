@@ -1,3 +1,19 @@
+CREATE TABLE "accounts" (
+	"id" text PRIMARY KEY NOT NULL,
+	"account_id" text NOT NULL,
+	"provider_id" text NOT NULL,
+	"user_id" text NOT NULL,
+	"access_token" text,
+	"refresh_token" text,
+	"id_token" text,
+	"access_token_expires_at" timestamp with time zone,
+	"refresh_token_expires_at" timestamp with time zone,
+	"scope" text,
+	"password" text,
+	"created_at" timestamp with time zone NOT NULL,
+	"updated_at" timestamp with time zone NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "ai_generations" (
 	"id" text PRIMARY KEY NOT NULL,
 	"business_id" text NOT NULL,
@@ -45,11 +61,6 @@ CREATE TABLE "businesses" (
 	"onboarding_completed_at" timestamp with time zone,
 	"created_at" timestamp with time zone NOT NULL,
 	"updated_at" timestamp with time zone NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "credentials" (
-	"user_id" text PRIMARY KEY NOT NULL,
-	"password_hash" text NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "lead_notes" (
@@ -167,10 +178,14 @@ CREATE TABLE "quizzes" (
 );
 --> statement-breakpoint
 CREATE TABLE "sessions" (
-	"token_hash" text PRIMARY KEY NOT NULL,
+	"id" text PRIMARY KEY NOT NULL,
+	"token" text NOT NULL,
 	"user_id" text NOT NULL,
 	"expires_at" timestamp with time zone NOT NULL,
-	"created_at" timestamp with time zone NOT NULL
+	"ip_address" text,
+	"user_agent" text,
+	"created_at" timestamp with time zone NOT NULL,
+	"updated_at" timestamp with time zone NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "tags" (
@@ -181,30 +196,33 @@ CREATE TABLE "tags" (
 	"created_at" timestamp with time zone NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "tokens" (
-	"token_hash" text PRIMARY KEY NOT NULL,
-	"user_id" text NOT NULL,
-	"kind" text NOT NULL,
-	"expires_at" timestamp with time zone NOT NULL,
-	"used_at" timestamp with time zone
-);
---> statement-breakpoint
 CREATE TABLE "users" (
 	"id" text PRIMARY KEY NOT NULL,
+	"name" text DEFAULT '' NOT NULL,
 	"email" text NOT NULL,
+	"email_verified" boolean DEFAULT false NOT NULL,
+	"image" text,
 	"role" text DEFAULT 'user' NOT NULL,
 	"first_name" text NOT NULL,
 	"last_name" text NOT NULL,
-	"email_verified_at" timestamp with time zone,
 	"last_login_at" timestamp with time zone,
 	"disabled_at" timestamp with time zone,
 	"created_at" timestamp with time zone NOT NULL,
 	"updated_at" timestamp with time zone NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "verifications" (
+	"id" text PRIMARY KEY NOT NULL,
+	"identifier" text NOT NULL,
+	"value" text NOT NULL,
+	"expires_at" timestamp with time zone NOT NULL,
+	"created_at" timestamp with time zone NOT NULL,
+	"updated_at" timestamp with time zone NOT NULL
+);
+--> statement-breakpoint
+ALTER TABLE "accounts" ADD CONSTRAINT "accounts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ai_generations" ADD CONSTRAINT "ai_generations_business_id_businesses_id_fk" FOREIGN KEY ("business_id") REFERENCES "public"."businesses"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "businesses" ADD CONSTRAINT "businesses_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "credentials" ADD CONSTRAINT "credentials_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "lead_notes" ADD CONSTRAINT "lead_notes_lead_id_leads_id_fk" FOREIGN KEY ("lead_id") REFERENCES "public"."leads"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "lead_submissions" ADD CONSTRAINT "lead_submissions_lead_id_leads_id_fk" FOREIGN KEY ("lead_id") REFERENCES "public"."leads"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "lead_submissions" ADD CONSTRAINT "lead_submissions_submission_id_quiz_submissions_id_fk" FOREIGN KEY ("submission_id") REFERENCES "public"."quiz_submissions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -219,7 +237,8 @@ ALTER TABLE "quiz_visits" ADD CONSTRAINT "quiz_visits_quiz_id_quizzes_id_fk" FOR
 ALTER TABLE "quizzes" ADD CONSTRAINT "quizzes_business_id_businesses_id_fk" FOREIGN KEY ("business_id") REFERENCES "public"."businesses"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "tags" ADD CONSTRAINT "tags_business_id_businesses_id_fk" FOREIGN KEY ("business_id") REFERENCES "public"."businesses"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "tokens" ADD CONSTRAINT "tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "accounts_user_idx" ON "accounts" USING btree ("user_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "accounts_provider_uq" ON "accounts" USING btree ("provider_id","account_id");--> statement-breakpoint
 CREATE INDEX "ai_generations_business_idx" ON "ai_generations" USING btree ("business_id","created_at");--> statement-breakpoint
 CREATE INDEX "audit_logs_created_idx" ON "audit_logs" USING btree ("created_at");--> statement-breakpoint
 CREATE UNIQUE INDEX "businesses_owner_uq" ON "businesses" USING btree ("owner_id");--> statement-breakpoint
@@ -236,7 +255,8 @@ CREATE INDEX "quiz_visits_quiz_session_idx" ON "quiz_visits" USING btree ("quiz_
 CREATE INDEX "quiz_visits_created_idx" ON "quiz_visits" USING btree ("quiz_id","created_at");--> statement-breakpoint
 CREATE UNIQUE INDEX "quizzes_slug_uq" ON "quizzes" USING btree ("slug");--> statement-breakpoint
 CREATE INDEX "quizzes_business_idx" ON "quizzes" USING btree ("business_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "sessions_token_uq" ON "sessions" USING btree ("token");--> statement-breakpoint
 CREATE INDEX "sessions_user_idx" ON "sessions" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "tags_business_idx" ON "tags" USING btree ("business_id");--> statement-breakpoint
-CREATE INDEX "tokens_user_idx" ON "tokens" USING btree ("user_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "users_email_uq" ON "users" USING btree ("email");
+CREATE UNIQUE INDEX "users_email_uq" ON "users" USING btree ("email");--> statement-breakpoint
+CREATE INDEX "verifications_identifier_idx" ON "verifications" USING btree ("identifier");

@@ -7,9 +7,11 @@ import { createPgDriver } from "@/server/db/pg-driver";
 import { seed } from "@/server/db/seed";
 import { emptyState, type Driver, type DbState } from "@/server/db/store";
 import { AppError } from "@/server/errors";
-import { sha256 } from "@/server/ids";
+import { createAuth } from "@/lib/auth/auth";
+import { lastMailTo } from "@/server/mailer";
+import { setMemberAccess, inviteCollaborator } from "@/services/team.service";
 import * as admin from "@/services/admin.service";
-import { authenticate, register, resetPassword, requestPasswordReset } from "@/services/auth.service";
+import { isResetTokenValid, register } from "@/services/auth.service";
 import { listLeads } from "@/services/lead.service";
 import { completeQuiz, startQuiz, trackVisit } from "@/services/public.service";
 import { createQuiz, getQuiz, listQuizzes, publishQuiz } from "@/services/quiz.service";
@@ -18,6 +20,7 @@ import { sampleConfig } from "./helpers";
 
 /** Intégration : les VRAIS services sur du SQL réel (PGlite = PostgreSQL en mémoire), via le pilote de production. */
 let driver: Driver;
+let auth: ReturnType<typeof createAuth>;
 let demo: DbState;
 let ids: { demoUser: string; demoBiz: string; otherUser: string; adminUser: string };
 
@@ -25,6 +28,7 @@ beforeAll(async () => {
   const db = drizzle(new PGlite());
   await migrate(db, { migrationsFolder: "drizzle" });
   driver = createPgDriver(db);
+  auth = createAuth(db, { nextCookies: false });
   demo = emptyState();
   seed(demo);
   await driver.replaceAll(demo);
@@ -86,14 +90,47 @@ describe("persistance PostgreSQL : écritures", () => {
     expect(res).toBe("CONFLICT");
   });
 
-  it("inscrit, authentifie et réinitialise un mot de passe de bout en bout", async () => {
+  it("Better Auth : connexion, session, réinitialisation et changement de mot de passe sur les mêmes tables", async () => {
     const email = "nouveau.client@mail.test";
+    const cookieOf = (res: Response) => res.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+    const signIn = (password: string) => auth.api.signInEmail({ body: { email, password }, asResponse: true });
     await driver.tx({ email }, (s) => register(s, { firstName: "Nina", lastName: "Test", email, password: "Motdepasse1" }));
-    expect(await driver.read({ email }, (s) => authenticate(s, email, "Motdepasse1")?.email)).toBe(email);
-    const token = (await driver.tx({ email }, (s) => requestPasswordReset(s, email)))!;
-    await driver.tx({ token: sha256(token) }, (s) => resetPassword(s, token, "Autremotdepasse2"));
-    expect(await driver.read({ email }, (s) => authenticate(s, email, "Motdepasse1"))).toBeNull();
-    expect(await driver.read({ email }, (s) => authenticate(s, email, "Autremotdepasse2")?.email)).toBe(email);
+
+    // Connexion : la session est une ligne de la table `sessions`, le cookie est signé.
+    expect((await signIn("mauvais-mot-de-passe")).ok).toBe(false);
+    const res = await signIn("Motdepasse1");
+    expect(res.ok).toBe(true);
+    const headers = new Headers({ cookie: cookieOf(res) });
+    expect((await auth.api.getSession({ headers }))?.user.email).toBe(email);
+    expect(await driver.read({ email }, (s) => s.users[0]!.lastLoginAt)).toBeTruthy();
+    expect(await driver.read({ account: (await auth.api.getSession({ headers }))!.user.id }, (s) => s.sessions.length)).toBe(1);
+
+    // Changement de mot de passe (mot de passe actuel exigé).
+    await expect(auth.api.changePassword({ body: { currentPassword: "faux", newPassword: "Intermediaire3" }, headers })).rejects.toThrow();
+    await auth.api.changePassword({ body: { currentPassword: "Motdepasse1", newPassword: "Intermediaire3", revokeOtherSessions: true }, headers });
+    expect((await signIn("Motdepasse1")).ok).toBe(false);
+
+    // Réinitialisation : jeton créé par Better Auth, vérifiable côté application, à usage unique, ferme les sessions.
+    await auth.api.requestPasswordReset({ body: { email, redirectTo: "/reset-password" } });
+    const token = lastMailTo(email)!.link!.split("/").pop()!;
+    expect(await driver.read({ identifier: `reset-password:${token}` }, (s) => isResetTokenValid(s, token))).toBe(true);
+    await auth.api.resetPassword({ body: { newPassword: "Autremotdepasse2", token } });
+    await expect(auth.api.resetPassword({ body: { newPassword: "Encore3Autre", token } })).rejects.toThrow();
+    expect(await driver.read({ identifier: `reset-password:${token}` }, (s) => isResetTokenValid(s, token))).toBe(false);
+    expect(await auth.api.getSession({ headers })).toBeNull();
+    expect((await signIn("Autremotdepasse2")).ok).toBe(true);
+  });
+
+  it("un lien émis par l'administration (services) est consommé par Better Auth ; un accès désactivé ne peut pas se connecter", async () => {
+    const adminCtx = ctxFor(ids.adminUser);
+    const invited = await driver.tx("admin", (s) => inviteCollaborator(s, adminCtx, { firstName: "Léo", lastName: "Martin", email: "leo.invite@leadora.app", role: "support" }));
+    const token = invited.link.split("/").pop()!;
+    await auth.api.resetPassword({ body: { newPassword: "Collaborateur1", token } });
+    const ok = await auth.api.signInEmail({ body: { email: "leo.invite@leadora.app", password: "Collaborateur1" } });
+    expect(ok.user.email).toBe("leo.invite@leadora.app");
+    await driver.tx("admin", (s) => setMemberAccess(s, adminCtx, invited.user.id, false));
+    await expect(auth.api.signInEmail({ body: { email: "leo.invite@leadora.app", password: "Collaborateur1" } })).rejects.toThrow();
+    expect(await driver.read({ account: invited.user.id }, (s) => s.sessions.length)).toBe(0);
   });
 });
 

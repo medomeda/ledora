@@ -16,9 +16,9 @@ export interface TableSpec {
 
 export const TABLES: TableSpec[] = [
   { key: "users", table: t.users, pk: ["id"] },
-  { key: "credentials", table: t.credentials, pk: ["userId"] },
-  { key: "sessions", table: t.sessions, pk: ["tokenHash"] },
-  { key: "tokens", table: t.tokens, pk: ["tokenHash"] },
+  { key: "accounts", table: t.accounts, pk: ["id"] },
+  { key: "sessions", table: t.sessions, pk: ["id"] },
+  { key: "verifications", table: t.verifications, pk: ["id"] },
   { key: "businesses", table: t.businesses, pk: ["id"] },
   { key: "quizzes", table: t.quizzes, pk: ["id"] },
   { key: "quizVersions", table: t.quizVersions, pk: ["id"] },

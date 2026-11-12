@@ -1,13 +1,16 @@
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { normalizeEmail, slugify } from "@/lib/utils/text";
-import { conflict, validation, notFound } from "@/server/errors";
+import { conflict, notFound } from "@/server/errors";
 import type { DbState } from "@/server/db/store";
-import { newId, newToken, sha256 } from "@/server/ids";
+import { newId, newToken } from "@/server/ids";
 import type { Business, User } from "@/types/domain";
 
-/** Comptes et mots de passe (PRD §6.1). Simulé : remplacé par Better Auth lors de la phase persistance. */
-const RESET_TTL_MS = 60 * 60 * 1000;
-const VERIFY_TTL_MS = 7 * 24 * 3600 * 1000;
+/**
+ * Comptes et mots de passe (PRD §6.1). L'inscription est atomique (utilisateur + compte de connexion + espace) ;
+ * la connexion, les sessions, la réinitialisation et le changement de mot de passe sont gérés par Better Auth
+ * (lib/auth/auth.ts) sur les mêmes tables. Ce module garde les règles propres à Leadora.
+ */
+export const RESET_PREFIX = "reset-password:";
 
 export function uniqueBusinessSlug(s: Readonly<DbState>, base: string): string {
   const root = slugify(base) || "mon-activite";
@@ -24,23 +27,25 @@ export interface RegisterInput {
   password: string;
 }
 
-/** Crée le compte ET son espace professionnel (un utilisateur = un espace). */
-export function register(s: DbState, input: RegisterInput, now = new Date()): { user: User; business: Business; verifyToken: string } {
+/** Crée le compte ET son espace professionnel (un utilisateur = un espace). Le mot de passe est stocké dans le compte de connexion Better Auth. */
+export function register(s: DbState, input: RegisterInput, now = new Date()): { user: User; business: Business } {
   const email = normalizeEmail(input.email);
   if (s.users.some((u) => u.email === email)) throw conflict("Un compte existe déjà avec cette adresse email.", { email: "Adresse déjà utilisée." });
   const at = now.toISOString();
-  const user: User = { id: newId(), email, role: "user", lastLoginAt: null, firstName: input.firstName.trim(), lastName: input.lastName.trim(), emailVerifiedAt: null, createdAt: at, updatedAt: at };
+  const firstName = input.firstName.trim();
+  const lastName = input.lastName.trim();
+  const user: User = { id: newId(), name: `${firstName} ${lastName}`.trim(), email, role: "user", lastLoginAt: null, disabledAt: null, firstName, lastName, emailVerified: false, createdAt: at, updatedAt: at };
   s.users.push(user);
-  s.credentials.push({ userId: user.id, passwordHash: hashPassword(input.password) });
+  addCredential(s, user.id, hashPassword(input.password), now);
   const business: Business = {
     id: newId(),
     ownerId: user.id,
-    name: `${user.firstName} ${user.lastName}`,
-    slug: uniqueBusinessSlug(s, `${user.firstName} ${user.lastName}`),
+    name: user.name,
+    slug: uniqueBusinessSlug(s, user.name),
     description: "",
     industry: "",
     activityType: "autre",
-    managerName: `${user.firstName} ${user.lastName}`,
+    managerName: user.name,
     contactEmail: email,
     logoUrl: null,
     website: "",
@@ -56,62 +61,41 @@ export function register(s: DbState, input: RegisterInput, now = new Date()): { 
     updatedAt: at,
   };
   s.businesses.push(business);
-  const verifyToken = issueToken(s, user.id, "verify_email", VERIFY_TTL_MS, now);
-  return { user, business, verifyToken };
+  return { user, business };
 }
 
-function issueToken(s: DbState, userId: string, kind: "reset_password" | "verify_email", ttl: number, now: Date): string {
+/** Compte de connexion « credential » (format attendu par Better Auth : accountId = id de l'utilisateur). */
+export function addCredential(s: DbState, userId: string, passwordHash: string, now = new Date()) {
+  const at = now.toISOString();
+  s.accounts.push({ id: newId(), accountId: userId, providerId: "credential", userId, password: passwordHash, createdAt: at, updatedAt: at });
+}
+
+/**
+ * Jeton de réinitialisation de mot de passe, au format de Better Auth (identifiant « reset-password:<jeton> », valeur = id de
+ * l'utilisateur) : le lien émis ici est consommé par `auth.api.resetPassword`. Remplace le jeton précédent de cet utilisateur.
+ */
+export function issueResetToken(s: DbState, userId: string, ttlMs: number, now = new Date()): string {
   const token = newToken();
-  s.tokens = s.tokens.filter((t) => !(t.userId === userId && t.kind === kind));
-  s.tokens.push({ tokenHash: sha256(token), userId, kind, expiresAt: new Date(now.getTime() + ttl).toISOString(), usedAt: null });
+  s.verifications = s.verifications.filter((v) => !(v.value === userId && v.identifier.startsWith(RESET_PREFIX)));
+  const at = now.toISOString();
+  s.verifications.push({ id: newId(), identifier: `${RESET_PREFIX}${token}`, value: userId, expiresAt: new Date(now.getTime() + ttlMs).toISOString(), createdAt: at, updatedAt: at });
   return token;
 }
 
-/** Vérifie les identifiants. Message volontairement identique que l'email existe ou non (pas d'énumération de comptes). */
+/** Vérifie les identifiants (mêmes règles que la connexion Better Auth). Calcul factice si le compte n'existe pas : temps de réponse comparable. */
 export function authenticate(s: Readonly<DbState>, emailRaw: string, password: string): User | null {
   const user = s.users.find((u) => u.email === normalizeEmail(emailRaw));
-  const cred = user && s.credentials.find((c) => c.userId === user.id);
-  // Calcul factice si le compte n'existe pas : temps de réponse comparable.
-  if (!user || !cred) {
+  const cred = user && s.accounts.find((a) => a.userId === user.id && a.providerId === "credential");
+  if (!user || !cred?.password) {
     verifyPassword(password, hashPassword("dummy-password-1"));
     return null;
   }
-  return verifyPassword(password, cred.passwordHash) ? user : null;
-}
-
-/** Retourne un jeton si le compte existe (null sinon) ; l'appelant répond toujours la même chose à l'utilisateur. */
-export function requestPasswordReset(s: DbState, emailRaw: string, now = new Date()): string | null {
-  const user = s.users.find((u) => u.email === normalizeEmail(emailRaw));
-  return user ? issueToken(s, user.id, "reset_password", RESET_TTL_MS, now) : null;
-}
-
-function consumeToken(s: DbState, token: string, kind: "reset_password" | "verify_email", now: Date) {
-  const h = sha256(token);
-  const row = s.tokens.find((t) => t.tokenHash === h && t.kind === kind);
-  if (!row || row.usedAt || new Date(row.expiresAt) <= now) throw validation("Ce lien est invalide ou a expiré.");
-  row.usedAt = now.toISOString();
-  return row;
-}
-
-export function resetPassword(s: DbState, token: string, newPassword: string, now = new Date()): void {
-  const row = consumeToken(s, token, "reset_password", now);
-  const cred = s.credentials.find((c) => c.userId === row.userId);
-  if (!cred) throw notFound("Compte introuvable.");
-  cred.passwordHash = hashPassword(newPassword);
-  // Toutes les sessions existantes sont révoquées.
-  s.sessions = s.sessions.filter((x) => x.userId !== row.userId);
-}
-
-export function verifyEmail(s: DbState, token: string, now = new Date()): void {
-  const row = consumeToken(s, token, "verify_email", now);
-  const user = s.users.find((u) => u.id === row.userId);
-  if (user) user.emailVerifiedAt = now.toISOString();
+  return verifyPassword(password, cred.password) ? user : null;
 }
 
 export function isResetTokenValid(s: Readonly<DbState>, token: string, now = new Date()): boolean {
-  const h = sha256(token);
-  const row = s.tokens.find((t) => t.tokenHash === h && t.kind === "reset_password");
-  return !!row && !row.usedAt && new Date(row.expiresAt) > now;
+  const v = s.verifications.find((x) => x.identifier === `${RESET_PREFIX}${token}`);
+  return !!v && new Date(v.expiresAt) > now;
 }
 
 export function updateProfile(s: DbState, userId: string, input: { firstName: string; lastName: string }, now = new Date()): User {
@@ -119,13 +103,7 @@ export function updateProfile(s: DbState, userId: string, input: { firstName: st
   if (!user) throw notFound("Compte introuvable.");
   user.firstName = input.firstName.trim();
   user.lastName = input.lastName.trim();
+  user.name = `${user.firstName} ${user.lastName}`.trim();
   user.updatedAt = now.toISOString();
   return user;
-}
-
-export function changePassword(s: DbState, userId: string, current: string, next: string, keepSessionHash: string | null): void {
-  const cred = s.credentials.find((c) => c.userId === userId);
-  if (!cred || !verifyPassword(current, cred.passwordHash)) throw validation("Mot de passe actuel incorrect.", { currentPassword: "Mot de passe incorrect." });
-  cred.passwordHash = hashPassword(next);
-  s.sessions = s.sessions.filter((x) => x.userId !== userId || x.tokenHash === keepSessionHash);
 }
