@@ -26,3 +26,14 @@ export const STAFF_ROLE_INFO: Record<StaffRole, { label: string; description: st
 export const isStaff = (role: UserRole): role is StaffRole => role !== "user";
 export const can = (role: UserRole, permission: Permission): boolean => isStaff(role) && STAFF_ROLE_INFO[role].permissions.includes(permission);
 export const permissionsOf = (role: UserRole): Permission[] => (isStaff(role) ? STAFF_ROLE_INFO[role].permissions : []);
+
+export const PERMISSION_LABELS: Record<Permission, string> = {
+  view: "Consulter l'administration",
+  "account.support": "Assister les clients (suspension, email, réinitialisation, sessions)",
+  "account.billing": "Changer l'offre d'un compte",
+  "account.delete": "Supprimer définitivement un compte",
+  "quiz.moderate": "Modérer les quiz",
+  "plans.configure": "Configurer les offres et quotas",
+  "settings.manage": "Modifier les réglages de la plateforme",
+  "team.manage": "Gérer l'équipe",
+};

@@ -41,13 +41,14 @@ function Links({ onNavigate, permissions }: { onNavigate?: () => void; permissio
 /** Coque du back-office : barre latérale sombre pour qu'on ne confonde jamais l'administration avec l'espace d'un client. */
 export function AdminShell({ user, roleLabel, permissions, hasWorkspace, children }: { user: { firstName: string; lastName: string; email: string }; roleLabel: string; permissions: Permission[]; hasWorkspace: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
   const footer = (
     <div className="mt-auto space-y-2">
       {hasWorkspace && <Link href="/dashboard" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/65 hover:bg-white/8 hover:text-white"><ArrowLeft className="size-[18px]" />Mon espace client</Link>}
-      <div className="rounded-lg bg-white/8 px-3 py-2.5">
+      <Link href="/admin/profil" onClick={() => setOpen(false)} aria-label="Mon profil" aria-current={pathname === "/admin/profil" ? "page" : undefined} className={cn("block rounded-lg px-3 py-2.5 transition-colors", pathname === "/admin/profil" ? "bg-white/16" : "bg-white/8 hover:bg-white/12")}>
         <p className="truncate text-sm font-medium text-white">{user.firstName} {user.lastName}</p>
-        <p className="truncate text-xs text-white/60">{user.email}</p>
-      </div>
+        <p className="truncate text-xs text-white/60">Mon profil · {user.email}</p>
+      </Link>
       <form action={logoutAction}><button type="submit" className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/65 hover:bg-white/8 hover:text-white"><LogOut className="size-[18px]" />Se déconnecter</button></form>
     </div>
   );
@@ -74,7 +75,7 @@ export function AdminShell({ user, roleLabel, permissions, hasWorkspace, childre
             </DialogPrimitive.Portal>
           </DialogPrimitive.Root>
           <span className="font-display font-semibold">Administration</span>
-          <span className="ml-auto flex size-8 items-center justify-center rounded-full bg-accent text-xs font-semibold text-primary">{initials(user.firstName, user.lastName)}</span>
+          <Link href="/admin/profil" aria-label="Mon profil" className="ml-auto flex size-8 items-center justify-center rounded-full bg-accent text-xs font-semibold text-primary">{initials(user.firstName, user.lastName)}</Link>
         </header>
         <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 py-6 sm:px-6 sm:py-8">{children}</main>
       </div>

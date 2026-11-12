@@ -1,4 +1,5 @@
 "use server";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { authed, failureLimiter, fieldErrorsOf, safeNext, toFailure, type ActionResult } from "@/actions/_shared";
@@ -79,7 +80,9 @@ export async function confirmEmailAction(): Promise<ActionResult> {
 }
 
 export async function updateProfileAction(raw: unknown): Promise<ActionResult> {
-  return authed(profileSchema, raw, (input, ctx) => void tx((s) => auth.updateProfile(s, ctx.userId, input, ctx.now)));
+  const res = await authed(profileSchema, raw, (input, ctx) => void tx((s) => auth.updateProfile(s, ctx.userId, input, ctx.now)));
+  if (res.ok) revalidatePath("/", "layout");
+  return res;
 }
 
 export async function changePasswordAction(raw: unknown): Promise<ActionResult> {
