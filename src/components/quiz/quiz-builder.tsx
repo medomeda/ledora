@@ -204,9 +204,9 @@ export function QuizBuilder({ initialConfig, initialMeta, brand, bookingUrl, pla
 
       {step === "design" ? (
         /* Onglet Design : réglages à gauche, aperçu en direct à droite (il suit chaque modification). */
-        <div className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]">
+        <div className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
           <DesignStep {...props} />
-          <div className="h-[78dvh] min-h-[480px] min-w-0 lg:sticky lg:top-32 lg:h-[calc(100dvh-9rem)] lg:self-start">
+          <div className="h-[78dvh] min-h-[480px] min-w-0 lg:sticky lg:top-[7.5rem] lg:h-[calc(100dvh-17rem)] lg:min-h-[420px] lg:self-start">
             <PreviewFrame config={config} brand={brand} plan={plan} screens fill defaultScreen="intro" className="h-full" />
           </div>
         </div>
@@ -221,7 +221,7 @@ export function QuizBuilder({ initialConfig, initialMeta, brand, bookingUrl, pla
       </div>
       )}
 
-      <div className={cn("mt-8 flex justify-between border-t pt-5", step !== "design" && "max-w-3xl")}>
+      <div className={cn("flex justify-between border-t", step === "design" ? "mt-4 pt-3" : "mt-8 max-w-3xl pt-5")}>
         <Button variant="ghost" disabled={step === "general"} onClick={() => setStep(STEPS[Math.max(0, STEPS.findIndex((s) => s.id === step) - 1)]!.id)}><ArrowLeft /> Précédent</Button>
         {step !== "publish" && <Button variant="outline" onClick={() => setStep(STEPS[STEPS.findIndex((s) => s.id === step) + 1]!.id)}>Étape suivante</Button>}
       </div>

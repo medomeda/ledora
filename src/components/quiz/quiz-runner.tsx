@@ -209,7 +209,7 @@ export function QuizRunner({ config, brand, slug, mode, plan = "free", previewSc
   const filled = design.optionStyle === "filled";
 
   return (
-    <div className={cn("flex w-full flex-col", mode === "public" ? "min-h-dvh" : "min-h-full")} style={designStyle(design)}>
+    <div className={cn("flex w-full flex-col", mode === "public" ? "min-h-dvh" : "min-h-full flex-1")} style={designStyle(design)}>
     <div className={cn("mx-auto flex w-full flex-1 flex-col px-5 pb-10 pt-6 sm:pt-10", wide ? "max-w-4xl" : "max-w-xl")}>
       <div ref={topRef} />
       {showLogoBlock && (
