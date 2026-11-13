@@ -1,6 +1,6 @@
 "use client";
 import { Maximize2, Minus, Monitor, Plus, RotateCcw, Smartphone } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { QuizRunner, type Brand, type PreviewScreen } from "@/components/quiz/quiz-runner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/cn";
@@ -68,7 +68,7 @@ export function PreviewFrame({ config, brand, plan = "free", className, screens 
     </div>
   );
 
-  if (fill) return <FitPreview className={className} device={device} resetKey={`${device}-${screen}-${key}`} header={header}>{runner}</FitPreview>;
+  if (fill) return <FitPreview className={className} device={device} header={header}>{runner}</FitPreview>;
 
   return (
     <div className={cn("flex min-h-0 flex-col", className)}>
@@ -87,25 +87,12 @@ export function PreviewFrame({ config, brand, plan = "free", className, screens 
  * l'échelle de départ ne dépend que de la taille de l'appareil et du cadre (pas du contenu), puis l'utilisateur zoome avec − / + ou « Ajuster ».
  * Quand l'écran dépasse le cadre (zoom élevé, résultat long), on fait défiler dans le cadre.
  */
-function FitPreview({ className, device, resetKey, header, children }: { className?: string; device: "desktop" | "mobile"; resetKey: string; header: (zoomControls: React.ReactNode) => React.ReactNode; children: React.ReactNode }) {
+function FitPreview({ className, device, header, children }: { className?: string; device: "desktop" | "mobile"; header: (zoomControls: React.ReactNode) => React.ReactNode; children: React.ReactNode }) {
   const [stageRef, stage] = useSize<HTMLDivElement>();
-  const innerRef = useRef<HTMLDivElement>(null);
-  const [content, setContent] = useState({ key: resetKey, h: 0 });
   const [manual, setManual] = useState<{ device: string; value: number } | null>(null);
   const vp = VIEWPORT[device];
   const extra = device === "mobile" ? 20 : 2; // bordure de l'appareil
 
-  // Hauteur réelle du contenu (sert à la zone défilante, jamais à l'échelle).
-  useEffect(() => {
-    const el = innerRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => setContent((c) => ({ key: resetKey, h: Math.max(c.key === resetKey ? c.h : 0, el.offsetHeight) })));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [resetKey]);
-
-  const contentH = content.key === resetKey ? content.h : 0;
-  const virtualH = Math.max(vp.h, contentH) + extra;
   const virtualW = vp.w + extra;
   const pad = 16;
   const auto = stage.w > 0 && stage.h > 0 ? Math.min(1, (stage.w - pad) / virtualW, (stage.h - pad) / (vp.h + extra)) : 1;
@@ -125,9 +112,10 @@ function FitPreview({ className, device, resetKey, header, children }: { classNa
     <div className={cn("flex min-h-0 flex-col", className)}>
       {header(zoomControls)}
       <div ref={stageRef} className="flex min-h-0 flex-1 overflow-auto rounded-xl border bg-muted">
-        <div className="m-auto shrink-0 p-2" style={{ width: virtualW * scale + 16, height: virtualH * scale + 16 }}>
-          <div style={{ width: virtualW, height: virtualH, transform: `scale(${scale})`, transformOrigin: "top left" }} className={cn("overflow-hidden bg-background shadow-lg", device === "mobile" ? "rounded-[2.5rem] border-[10px] border-primary" : "rounded-xl border")}>
-            <div ref={innerRef} className="flex flex-col" style={{ width: vp.w, minHeight: vp.h }}>{children}</div>
+        {/* `zoom` met à l'échelle la mise en page elle-même : la taille du cadre suit le contenu dans la même image, sans mesure ni saut (contrairement à transform + hauteur calculée en JavaScript). */}
+        <div className="m-auto shrink-0 p-2">
+          <div style={{ width: virtualW, minHeight: vp.h + extra, zoom: scale }} className={cn("overflow-hidden bg-background shadow-lg", device === "mobile" ? "rounded-[2.5rem] border-[10px] border-primary" : "rounded-xl border")}>
+            <div className="flex flex-col" style={{ width: vp.w, minHeight: vp.h }}>{children}</div>
           </div>
         </div>
       </div>
