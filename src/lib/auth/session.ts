@@ -24,8 +24,10 @@ export interface SessionUser {
 
 /** Session courante (mémoïsée par requête). Un collaborateur désactivé n'a plus de session valide. */
 export const getSession = cache(async (): Promise<SessionUser | null> => {
+  // headers() d'abord : cela rend la page dynamique AVANT tout accès à la base (rien ne doit lire la base à la compilation).
+  const h = await headers();
   const auth = await getAuth();
-  const res = await auth.api.getSession({ headers: await headers() });
+  const res = await auth.api.getSession({ headers: h });
   if (!res) return null;
   const u = res.user as typeof res.user & { firstName?: string; lastName?: string; role?: User["role"]; disabledAt?: Date | string | null };
   if (u.disabledAt) return null;

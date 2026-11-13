@@ -7,6 +7,9 @@ import { getSession } from "@/lib/auth/session";
 import "@/server/bootstrap";
 import { read } from "@/server/db/store";
 
+/** Lit les réglages en base (inscriptions ouvertes ou fermées) : jamais prérendue à la compilation. */
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = { title: "Créer mon espace" };
 
 export default async function RegisterPage() {

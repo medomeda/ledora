@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, DM_Sans, Fraunces, Instrument_Sans, Lora, Playfair_Display, Poppins, Space_Grotesk } from "next/font/google";
 import type { ReactNode } from "react";
 import { Toaster } from "sonner";
-import { SITE_URL } from "@/lib/site";
+import { siteUrl } from "@/lib/site";
 import "./globals.css";
 
 const instrument = Instrument_Sans({ subsets: ["latin"], variable: "--font-instrument", display: "swap" });
@@ -18,7 +18,7 @@ const playfair = Playfair_Display({ subsets: ["latin"], display: "swap", preload
 const fontVars = [instrument, bricolage, dmSans, spaceGrotesk, poppins, lora, fraunces, playfair].map((f) => f.variable).join(" ");
 
 export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
+  metadataBase: new URL(siteUrl()),
   title: { default: "Leadora — Quiz marketing et qualification de prospects", template: "%s · Leadora" },
   description: "Créez des quiz marketing, collectez des prospects qualifiés et suivez vos conversions depuis un seul espace.",
   applicationName: "Leadora",

@@ -1,20 +1,56 @@
-# Base PostgreSQL locale pour le développement : `npm run db:up`
+# Déploiement Coolify : application Leadora + base PostgreSQL.
+# Guide : docs/DEPLOIEMENT_COOLIFY.md — test local de l'image : voir docker-compose.local.yml
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: leadora
-      POSTGRES_PASSWORD: leadora
+      # Généré et conservé par Coolify.
+      POSTGRES_PASSWORD: ${SERVICE_PASSWORD_POSTGRES}
       POSTGRES_DB: leadora
-    ports:
-      - "5440:5432"
     volumes:
-      - leadora-pg:/var/lib/postgresql/data
+      - pg-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U leadora -d leadora"]
-      interval: 3s
-      timeout: 3s
-      retries: 20
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Les migrations SQL (drizzle/) s'appliquent automatiquement au démarrage.
+      DATABASE_URL: postgresql://leadora:${SERVICE_PASSWORD_POSTGRES}@db:5432/leadora
+      # Authentification (Better Auth) : secret généré par Coolify ; adresse publique https à renseigner (ex. https://app.mondomaine.com).
+      BETTER_AUTH_SECRET: ${SERVICE_HEX_64_BETTERAUTHSECRET}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL}
+      # Premier administrateur (créé seulement s'il n'existe aucun compte d'équipe ; mot de passe de 12 caractères minimum).
+      LEADORA_BOOTSTRAP_ADMIN_EMAIL: ${LEADORA_BOOTSTRAP_ADMIN_EMAIL:-}
+      LEADORA_BOOTSTRAP_ADMIN_PASSWORD: ${LEADORA_BOOTSTRAP_ADMIN_PASSWORD:-}
+      LEADORA_BOOTSTRAP_ADMIN_NAME: ${LEADORA_BOOTSTRAP_ADMIN_NAME:-}
+      # Jeu de démonstration (comptes fictifs aux mots de passe publics) : JAMAIS en production. 1 = charge la démo dans une base vide.
+      LEADORA_SEED_DEMO: ${LEADORA_SEED_DEMO:-0}
+      LEADORA_DEMO_MODE: ${LEADORA_DEMO_MODE:-0}
+      # Modules.
+      LEADORA_FEATURE_AI: ${LEADORA_FEATURE_AI:-1}
+      LEADORA_FEATURE_ASSISTANT: ${LEADORA_FEATURE_ASSISTANT:-0}
+      LEADORA_FEATURE_PUBLICATIONS: ${LEADORA_FEATURE_PUBLICATIONS:-0}
+      AI_PROVIDER: ${AI_PROVIDER:-mock}
+      # Emails : aucun fournisseur branché pour l'instant (les messages sont écrits dans les journaux, les liens s'affichent à l'écran).
+      MAIL_PROVIDER: ${MAIL_PROVIDER:-}
+      # Derrière le proxy Traefik de Coolify : IP client lue dans X-Forwarded-For (limitation des tentatives).
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3300/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+
 volumes:
-  leadora-pg:
+  pg-data:

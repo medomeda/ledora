@@ -93,6 +93,18 @@ export function authenticate(s: Readonly<DbState>, emailRaw: string, password: s
   return verifyPassword(password, cred.password) ? user : null;
 }
 
+/** Premier administrateur d'un déploiement : utilisateur « admin » sans espace client, adresse considérée comme confirmée. */
+export function createBootstrapAdmin(s: DbState, input: { email: string; password: string; name: string }, now = new Date()): User {
+  const email = normalizeEmail(input.email);
+  if (s.users.some((u) => u.email === email)) throw conflict("Un compte existe déjà avec cette adresse email.", { email: "Adresse déjà utilisée." });
+  const at = now.toISOString();
+  const [first = input.name, ...rest] = input.name.trim().split(/\s+/);
+  const user: User = { id: newId(), name: input.name.trim(), email, role: "admin", lastLoginAt: null, disabledAt: null, firstName: first, lastName: rest.join(" "), emailVerified: true, createdAt: at, updatedAt: at };
+  s.users.push(user);
+  addCredential(s, user.id, hashPassword(input.password), now);
+  return user;
+}
+
 export function isResetTokenValid(s: Readonly<DbState>, token: string, now = new Date()): boolean {
   const v = s.verifications.find((x) => x.identifier === `${RESET_PREFIX}${token}`);
   return !!v && new Date(v.expiresAt) > now;

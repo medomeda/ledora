@@ -39,7 +39,7 @@ export function createAuth(db: unknown, opts: { nextCookies?: boolean } = {}) {
       ...(baseURL ? { baseURL } : {}),
       secret: secret(),
       // Les appels serveur (server actions) n'ont pas d'origine : seul le navigateur envoie un en-tête Origin vers /api/auth.
-      trustedOrigins: [baseURL, process.env.NEXT_PUBLIC_SITE_URL, "http://localhost:3300", "http://localhost:3800"].filter((x): x is string => !!x),
+      trustedOrigins: [baseURL, process.env.SITE_URL, ...(process.env.NODE_ENV === "production" ? [] : ["http://localhost:3300", "http://localhost:3800"])].filter((x): x is string => !!x),
       database: drizzleAdapter(db as never, { provider: "pg", schema: { user: schema.users, session: schema.sessions, account: schema.accounts, verification: schema.verifications } }),
       emailAndPassword: {
         enabled: true,

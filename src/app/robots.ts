@@ -1,10 +1,12 @@
 import type { MetadataRoute } from "next";
-import { SITE_URL } from "@/lib/site";
+import { siteUrl } from "@/lib/site";
+
+export const dynamic = "force-dynamic";
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [{ userAgent: "*", allow: "/", disallow: ["/api/", "/dashboard", "/lead-magnets", "/crm", "/business", "/settings", "/onboarding", "/reset-password/"] }],
-    sitemap: `${SITE_URL}/sitemap.xml`,
-    host: SITE_URL,
+    sitemap: `${siteUrl()}/sitemap.xml`,
+    host: siteUrl(),
   };
 }

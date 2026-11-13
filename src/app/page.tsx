@@ -10,7 +10,7 @@ import { getSession } from "@/lib/auth/session";
 import "@/server/bootstrap";
 import { allPlans } from "@/lib/constants/plans";
 import { read } from "@/server/db/store";
-import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { SITE_NAME, siteUrl } from "@/lib/site";
 
 const TITLE = "Leadora : créez un quiz marketing qui qualifie vos prospects";
 const DESCRIPTION = "Créez un quiz interactif, capturez des prospects déjà qualifiés grâce au scoring par profils, et suivez-les dans un CRM intégré. Pour coachs, formateurs et consultants. Gratuit pour démarrer.";
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   description: DESCRIPTION,
   keywords: ["quiz marketing", "générateur de quiz", "lead magnet", "qualification de prospects", "capture de leads", "quiz coach", "CRM prospects"],
   alternates: { canonical: "/" },
-  openGraph: { type: "website", url: SITE_URL, siteName: SITE_NAME, title: TITLE, description: DESCRIPTION, locale: "fr_FR" },
+  openGraph: { type: "website", url: siteUrl(), siteName: SITE_NAME, title: TITLE, description: DESCRIPTION, locale: "fr_FR" },
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
 };
 
@@ -47,8 +47,8 @@ const num = (n: number | null, unit: string) => (n === null ? `${unit} illimité
 const jsonLd = {
   "@context": "https://schema.org",
   "@graph": [
-    { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
-    { "@type": "WebSite", name: SITE_NAME, url: SITE_URL, inLanguage: "fr-FR" },
+    { "@type": "Organization", name: SITE_NAME, url: siteUrl() },
+    { "@type": "WebSite", name: SITE_NAME, url: siteUrl(), inLanguage: "fr-FR" },
     { "@type": "SoftwareApplication", name: SITE_NAME, applicationCategory: "BusinessApplication", operatingSystem: "Web", description: DESCRIPTION, inLanguage: "fr-FR", offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" } },
     { "@type": "FAQPage", mainEntity: FAQ.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })) },
   ],

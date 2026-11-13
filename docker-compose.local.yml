@@ -1,0 +1,16 @@
+# Test local de l'image de production : docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+# Puis http://localhost:3301 (administration : admin@local.test / mot-de-passe-local-12).
+services:
+  db:
+    environment:
+      POSTGRES_PASSWORD: local-password
+  app:
+    ports:
+      - "3301:3300"
+    environment:
+      DATABASE_URL: postgresql://leadora:local-password@db:5432/leadora
+      BETTER_AUTH_SECRET: local-auth-secret-0123456789abcdef0123456789abcdef
+      BETTER_AUTH_URL: http://localhost:3301
+      LEADORA_BOOTSTRAP_ADMIN_EMAIL: admin@local.test
+      LEADORA_BOOTSTRAP_ADMIN_PASSWORD: mot-de-passe-local-12
+      LEADORA_BOOTSTRAP_ADMIN_NAME: Administrateur local

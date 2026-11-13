@@ -128,6 +128,7 @@ export const driverKind = (): DriverKind => (process.env.DATABASE_URL ? "postgre
 
 async function createDriver(): Promise<{ driver: Driver; db: unknown }> {
   const kind = driverKind();
+  if (kind === "pglite" && process.env.NODE_ENV === "production") throw new Error("DATABASE_URL (PostgreSQL) est obligatoire en production.");
   const { createPgDriver } = await import("@/server/db/pg-driver");
   const folder = resolve(/* turbopackIgnore: true */ process.cwd(), "drizzle");
   let driver: Driver;
@@ -156,7 +157,27 @@ async function createDriver(): Promise<{ driver: Driver; db: unknown }> {
     seeder(fresh);
     await driver.replaceAll(fresh);
   }
+  await bootstrapAdmin(driver);
   return { driver, db };
+}
+
+/**
+ * Premier administrateur d'une plateforme vide (déploiement) : créé UNIQUEMENT s'il n'existe aucun compte d'équipe et que
+ * LEADORA_BOOTSTRAP_ADMIN_EMAIL / _PASSWORD (12 caractères minimum) sont définis. À retirer de l'environnement après la
+ * première connexion (changer alors le mot de passe depuis « Mon profil »).
+ */
+async function bootstrapAdmin(driver: Driver) {
+  const email = process.env.LEADORA_BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
+  const password = process.env.LEADORA_BOOTSTRAP_ADMIN_PASSWORD;
+  if (!email || !password) return;
+  if (password.length < 12) {
+    console.error("[bootstrap] LEADORA_BOOTSTRAP_ADMIN_PASSWORD doit contenir 12 caractères minimum : administrateur non créé.");
+    return;
+  }
+  const { createBootstrapAdmin } = await import("@/services/auth.service");
+  const name = process.env.LEADORA_BOOTSTRAP_ADMIN_NAME?.trim() || "Administrateur Leadora";
+  const created = await driver.tx("admin", (s) => (s.users.some((u) => u.role !== "user") ? false : (createBootstrapAdmin(s, { email, password, name }), true)));
+  console.info(created ? `[bootstrap] administrateur créé : ${email}` : "[bootstrap] un compte d'équipe existe déjà : rien à faire.");
 }
 
 function getBoth() {

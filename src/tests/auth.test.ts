@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { authenticate, isResetTokenValid, issueResetToken, register, updateProfile } from "@/services/auth.service";
+import { authenticate, createBootstrapAdmin, isResetTokenValid, issueResetToken, register, updateProfile } from "@/services/auth.service";
 import { makeWorld } from "@/tests/helpers";
 import { emptyState } from "@/server/db/store";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
@@ -47,6 +47,15 @@ describe("authentification", () => {
     expect(r.user).toMatchObject({ name: "A B", emailVerified: false });
     updateProfile(s, r.user.id, { firstName: "Alice", lastName: "Durand" });
     expect(s.users[0]!.name).toBe("Alice Durand");
+  });
+
+  it("crée le premier administrateur d'un déploiement (sans espace client, adresse confirmée) et refuse un doublon", () => {
+    const s2 = emptyState();
+    const admin = createBootstrapAdmin(s2, { email: " Admin@Exemple.com ", password: "mot-de-passe-12+", name: "Aïcha Diallo" });
+    expect(admin).toMatchObject({ email: "admin@exemple.com", role: "admin", emailVerified: true, firstName: "Aïcha", lastName: "Diallo", name: "Aïcha Diallo" });
+    expect(s2.businesses).toHaveLength(0);
+    expect(authenticate(s2, "admin@exemple.com", "mot-de-passe-12+")?.role).toBe("admin");
+    expect(() => createBootstrapAdmin(s2, { email: "admin@exemple.com", password: "autre-mot-de-passe", name: "X" })).toThrow(/existe déjà/);
   });
 
   it("valide les formulaires avec Zod", () => {

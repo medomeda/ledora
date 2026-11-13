@@ -43,11 +43,20 @@ Comptes de démonstration (mot de passe `Leadora2026`, raccourcis sur la page de
 Quiz publics de démonstration : `/q/maturite-financiere` (design par défaut) et `/q/type-entrepreneur` (design personnalisé : thème Océan, titres en Fraunces, centré).
 Les données de démonstration sont relatives à la date du jour. Réinitialisation : `npm run db:reset` (efface tout).
 
+## Déploiement (VPS, Coolify)
+
+Même schéma que KOTI : `Dockerfile` (serveur Next.js autonome, utilisateur non root, ~240 Mo) + `docker-compose.yml`
+(`app` + `db` PostgreSQL 16, volume `pg-data`). Migrations appliquées au démarrage ; premier administrateur créé à partir de
+`LEADORA_BOOTSTRAP_ADMIN_*` ; sondes `/api/health` (processus) et `/api/ready` (base). Guide pas à pas :
+[docs/DEPLOIEMENT_COOLIFY.md](docs/DEPLOIEMENT_COOLIFY.md). Test local de l'image :
+`docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build` puis http://localhost:3301.
+
 ## Scripts
 
 | Commande | Rôle |
 |---|---|
 | `npm run dev` | Serveur de développement (port 3300) |
+| `npm run db:up` / `db:down` | Démarre / arrête PostgreSQL de développement (`docker-compose.dev.yml`, port 5440) |
 | `npm run build` / `npm start` | Build et serveur de production |
 | `npm test` | Tests unitaires et de recette (Vitest) |
 | `npm run typecheck` | TypeScript strict |
