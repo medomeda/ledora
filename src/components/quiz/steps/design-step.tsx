@@ -1,5 +1,5 @@
 "use client";
-import { ImageIcon, LayoutTemplate, Palette, PanelBottom, RotateCcw, Shapes, Type } from "lucide-react";
+import { ChevronDown, ImageIcon, LayoutTemplate, Palette, PanelBottom, RotateCcw, Shapes, Type } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import type { StepProps } from "@/components/quiz/quiz-builder";
@@ -43,27 +43,10 @@ export function DesignStep({ config, update, plan, hasLogo }: StepProps) {
   const set = (patch: Partial<QuizDesign>) => update((c) => void (c.design = { ...(c.design ?? {}), ...patch }));
   const pal = palette(d);
   const free = plan === "free";
-  const current = GROUPS.find((g) => g.id === group)!;
 
-  return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Catégories de réglages">
-        {GROUPS.map(({ id, label, icon: Icon }) => (
-          <button key={id} type="button" role="tab" id={`dg-${id}`} aria-selected={group === id} aria-controls="dg-panel" onClick={() => setGroup(id)} className={cn("flex flex-col items-center gap-1 rounded-xl border px-2 py-2.5 text-xs font-medium", group === id ? "border-primary bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground")}>
-            <Icon className="size-[18px]" aria-hidden />
-            {label}
-          </button>
-        ))}
-      </div>
-
-      <Card className="p-4 sm:p-5">
-        <div role="tabpanel" id="dg-panel" aria-labelledby={`dg-${group}`} className="space-y-4">
-          <div className="flex items-start justify-between gap-3">
-            <div><h3 className="font-display text-base font-semibold">{current.label}</h3><p className="mt-0.5 text-sm text-muted-foreground">{current.hint}</p></div>
-            {config.design && Object.keys(config.design).length > 0 && <Button variant="ghost" size="sm" className="-mr-2 shrink-0" onClick={() => update((c) => void (c.design = undefined))}><RotateCcw /> Réinitialiser</Button>}
-          </div>
-
-          {group === "theme" && (
+  const body = (g: GroupId) => (
+    <div className="space-y-4">
+          {g === "theme" && (
             <>
               <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Thème">
                 {THEMES.map((t) => (
@@ -90,7 +73,7 @@ export function DesignStep({ config, update, plan, hasLogo }: StepProps) {
             </>
           )}
 
-          {group === "type" && (
+          {g === "type" && (
             <>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Police des titres" htmlFor="d-hf">
@@ -104,7 +87,7 @@ export function DesignStep({ config, update, plan, hasLogo }: StepProps) {
             </>
           )}
 
-          {group === "header" && (
+          {g === "header" && (
             <>
               <Field label="Position du logo"><Segmented label="Position du logo" value={d.logoPosition} onChange={(v) => set({ logoPosition: v })} options={[{ value: "left", label: "À gauche" }, { value: "center", label: "Centré" }, { value: "hidden", label: "Masqué" }]} /></Field>
               {d.logoPosition !== "hidden" && (
@@ -117,7 +100,7 @@ export function DesignStep({ config, update, plan, hasLogo }: StepProps) {
             </>
           )}
 
-          {group === "layout" && (
+          {g === "layout" && (
             <>
               <Field label="Alignement des textes"><Segmented label="Alignement" value={d.align} onChange={(v) => set({ align: v })} options={[{ value: "left", label: "À gauche" }, { value: "center", label: "Centré" }]} /></Field>
               <Field label="Page d'introduction" hint={config.coverImage ? undefined : "Ajoutez une image de couverture (étape Informations) pour utiliser ces dispositions."}>
@@ -127,7 +110,7 @@ export function DesignStep({ config, update, plan, hasLogo }: StepProps) {
             </>
           )}
 
-          {group === "style" && (
+          {g === "style" && (
             <>
               <Field label="Arrondis"><Segmented label="Arrondis" value={d.corners} onChange={(v) => set({ corners: v })} options={[{ value: "sharp", label: "Angles vifs" }, { value: "rounded", label: "Arrondis" }, { value: "soft", label: "Très arrondis" }]} /></Field>
               <Field label="Cartes de réponses"><Segmented label="Cartes de réponses" value={d.optionStyle} onChange={(v) => set({ optionStyle: v })} options={[{ value: "outline", label: "Avec contour" }, { value: "filled", label: "Remplies" }]} /></Field>
@@ -135,14 +118,34 @@ export function DesignStep({ config, update, plan, hasLogo }: StepProps) {
             </>
           )}
 
-          {group === "footer" && (
+          {g === "footer" && (
             <>
               <Field label="Texte libre" htmlFor="d-footer" optional hint="Mentions, adresse, rappel de confidentialité…"><Textarea id="d-footer" rows={3} maxLength={200} value={d.footerText} onChange={(e) => set({ footerText: e.target.value })} /></Field>
               <label className="flex items-start gap-3 text-sm"><Switch className="mt-0.5" checked={free ? true : d.showPoweredBy} disabled={free} onChange={(e) => set({ showPoweredBy: e.target.checked })} /><span><span className="block font-medium">Afficher « Propulsé par Leadora »</span><span className="text-muted-foreground">{free ? "Obligatoire avec l'offre Gratuit. Vous pourrez la retirer avec une offre supérieure." : "Vous pouvez retirer cette mention."}</span></span></label>
             </>
           )}
-        </div>
-      </Card>
+    </div>
+  );
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">Un réglage ouvert à la fois ; l&apos;aperçu suit chaque modification.</p>
+        {config.design && Object.keys(config.design).length > 0 && <Button variant="ghost" size="sm" className="-mr-2 shrink-0" onClick={() => update((c) => void (c.design = undefined))}><RotateCcw /> Réinitialiser</Button>}
+      </div>
+      {GROUPS.map(({ id, label, icon: Icon, hint }) => {
+        const open = group === id;
+        return (
+          <Card key={id} className={cn("overflow-hidden", open && "border-primary/50")}>
+            <button type="button" id={`dg-${id}`} aria-expanded={open} aria-controls={`dg-panel-${id}`} onClick={() => setGroup(id)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/50">
+              <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", open ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}><Icon className="size-4" aria-hidden /></span>
+              <span className="min-w-0 flex-1"><span className="block font-display text-sm font-semibold">{label}</span><span className="block truncate text-xs text-muted-foreground">{hint}</span></span>
+              <ChevronDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} aria-hidden />
+            </button>
+            {open && <div id={`dg-panel-${id}`} role="region" aria-labelledby={`dg-${id}`} className="border-t px-4 pb-4 pt-4">{body(id)}</div>}
+          </Card>
+        );
+      })}
     </div>
   );
 }
