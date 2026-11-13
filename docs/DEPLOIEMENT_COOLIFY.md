@@ -56,6 +56,7 @@ L'administrateur se connecte sur `https://votre-domaine/login` et arrive directe
 | Variable | Défaut | Rôle |
 |---|---|---|
 | `LEADORA_DEMO_MODE` | `1` | **Phase de test : actif par défaut** (bandeau, comptes fictifs sur la connexion, page `/guide`, données simulées chargées dans une base vide). Mettre `0` pour la production réelle, puis repartir d'une base vide (section 9). |
+| `LEADORA_SHOWCASE_QUIZ` | *(vide)* | Adresse d'un quiz **publié** proposé par le bouton « Voir un quiz en vrai » de l'accueil (ex. `mon-diagnostic`). Vide : le quiz de démonstration en mode test, sinon le bouton devient « Voir comment ça marche ». |
 | `LEADORA_ALLOW_DEMO_RESET` | `0` | Mode test seulement : `1` active le bouton « Réinitialiser la démonstration » (Administration → Réglages) et la route `POST /api/demo/reset`. |
 | `LEADORA_FEATURE_AI` | `1` | Assistance IA dans la création de quiz (fournisseur simulé : `AI_PROVIDER=mock`). |
 | `LEADORA_FEATURE_ASSISTANT` / `_PUBLICATIONS` | `0` | Modules « au chaud ». |

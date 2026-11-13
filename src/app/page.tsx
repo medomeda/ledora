@@ -12,6 +12,7 @@ import { getSession } from "@/lib/auth/session";
 import "@/server/bootstrap";
 import { allPlans } from "@/lib/constants/plans";
 import { read } from "@/server/db/store";
+import { getPublicQuiz } from "@/services/quiz.service";
 import { SITE_NAME, siteUrl } from "@/lib/site";
 
 const TITLE = "Leadora : créez un quiz marketing qui qualifie vos prospects";
@@ -60,6 +61,9 @@ export default async function Home() {
   const session = await getSession();
   if (session) redirect(isStaff(session.role) ? "/admin" : "/dashboard");
   const plans = await read("settings", (s) => allPlans(s));
+  // Quiz de vitrine : seulement en mode test (jeu de démonstration) ou si LEADORA_SHOWCASE_QUIZ désigne un quiz publié ; jamais un quiz de client pris au hasard.
+  const showcaseSlug = process.env.LEADORA_SHOWCASE_QUIZ || (isDemoMode() ? "type-entrepreneur" : null);
+  const showcase = showcaseSlug && (await read({ slug: showcaseSlug }, (s) => !!getPublicQuiz(s, showcaseSlug))) ? showcaseSlug : null;
   return (
     <div className="min-h-dvh bg-background">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
@@ -89,7 +93,7 @@ export default async function Home() {
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">Chaque participant reçoit un diagnostic personnalisé. Vous recevez un contact avec son score, son profil et ses réponses : vous savez qui appeler en premier, et quoi lui dire.</p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild size="lg" variant="accent"><Link href="/register">Créer mon premier quiz <ArrowRight /></Link></Button>
-              <Button asChild size="lg" variant="outline"><Link href="/q/type-entrepreneur">Voir un quiz en vrai</Link></Button>
+              <Button asChild size="lg" variant="outline">{showcase ? <Link href={`/q/${showcase}`}>Voir un quiz en vrai</Link> : <a href="#comment-ca-marche">Voir comment ça marche</a>}</Button>
             </div>
             <ul className="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
               {["Gratuit pour démarrer", "Sans carte bancaire", "Génération IA incluse"].map((t) => <li key={t} className="flex items-center gap-1.5"><Check className="size-4 text-success" aria-hidden />{t}</li>)}
