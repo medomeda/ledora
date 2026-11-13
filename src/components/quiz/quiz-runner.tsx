@@ -110,7 +110,16 @@ export function QuizRunner({ config, brand, slug, mode, plan = "free", previewSc
     try { sessionStorage.setItem(`${storageKey}:state`, JSON.stringify({ step, index, answers, contact: contactSaved ? contact : null, contactSaved, result } satisfies Saved)); } catch { /* stockage indisponible : sans conséquence */ }
   }, [storageKey, step, index, answers, contact, contactSaved, result]);
 
-  useEffect(() => { topRef.current?.scrollIntoView({ block: "start" }); }, [step, index]);
+  // Retour en haut au changement d'écran. En aperçu, on ne remonte que le conteneur défilant de l'aperçu : scrollIntoView ferait défiler toute la page du créateur.
+  useEffect(() => {
+    const top = topRef.current;
+    if (!top) return;
+    if (mode !== "preview") { top.scrollIntoView({ block: "start" }); return; }
+    for (let el = top.parentElement; el; el = el.parentElement) {
+      const o = getComputedStyle(el).overflowY;
+      if ((o === "auto" || o === "scroll") && el.scrollHeight > el.clientHeight) { el.scrollTop = 0; break; }
+    }
+  }, [step, index, mode]);
 
   const utm = useCallback(() => {
     const p = new URLSearchParams(window.location.search);

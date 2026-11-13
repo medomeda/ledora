@@ -67,6 +67,7 @@ Les phases fonctionnelles du PRD §16 sont couvertes, **hors Publications et Ass
 | 13/11/2026 | **Aperçu du Design : commandes retirées.** Dans l'onglet Design, l'aperçu n'affiche plus que l'écran simulé (appareil, écrans du parcours, zoom et « Recommencer » retirés, en attendant de décider de leur nouvel emplacement). Le composant garde ces commandes (option `bare`) : l'aperçu plein écran du créateur et la page d'aperçu les conservent. |
 | 13/11/2026 | **Aperçu du Design : rangée des écrans du parcours remise.** Au-dessus de l'aperçu, seuls les boutons Parcours / Introduction / Question / Formulaire / Résultat sont de retour ; appareil, zoom et « Recommencer » restent à replacer. |
 | 13/11/2026 | **Aperçu du Design : choix de l'appareil remis.** Sur la même ligne que les écrans du parcours : écrans à gauche, bascule Ordinateur / Mobile à droite (icônes seules sous ~670 px de large, libellés au-delà). Zoom et « Recommencer » restent à replacer. |
+| 13/11/2026 | **Aperçu : la page ne défile plus au clic sur un écran du parcours.** Cause : le lecteur de quiz remontait en haut de l'écran par `scrollIntoView`, ce qui faisait défiler toute la page du créateur (jusqu'à 275 px à 1360×900, 357 px à 1280×720). En aperçu, seul le conteneur défilant de l'aperçu est remis en haut ; les quiz publics sont inchangés. Mesuré : défilement de la page 0 px après chaque clic (Question, Formulaire, Résultat, Introduction, Parcours), y compris depuis une page déjà défilée. |
 
 ## 4. Questions ouvertes
 
