@@ -207,7 +207,7 @@ export function QuizBuilder({ initialConfig, initialMeta, brand, bookingUrl, pla
         <div className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
           <DesignStep {...props} />
           <div className="h-[78dvh] min-h-[480px] min-w-0 lg:sticky lg:top-28 lg:h-[clamp(36rem,calc(100dvh-8rem),62rem)] lg:self-start">
-            <PreviewFrame config={config} brand={brand} plan={plan} fill bare defaultScreen="intro" className="h-full" />
+            <PreviewFrame config={config} brand={brand} plan={plan} screens fill bare defaultScreen="intro" className="h-full" />
           </div>
         </div>
       ) : (

@@ -40,7 +40,7 @@ function useSize<T extends HTMLElement>() {
  * `fill` remplit la hauteur du conteneur ET ajuste l'échelle pour que l'écran entier soit visible sans défilement
  * (le défilement n'apparaît que si l'écran est si long qu'il deviendrait illisible : échelle minimale 55 %).
  */
-export function PreviewFrame({ config, brand, plan = "free", className, screens = false, fill = false, defaultScreen = "flow", bare = false }: { config: QuizConfig; brand: Brand; plan?: PlanId; className?: string; screens?: boolean; fill?: boolean; defaultScreen?: PreviewScreen | "flow"; /** Sans aucune commande : seul l'écran simulé est affiché (appareil, écran et zoom restent à leurs valeurs de départ). */ bare?: boolean }) {
+export function PreviewFrame({ config, brand, plan = "free", className, screens = false, fill = false, defaultScreen = "flow", bare = false }: { config: QuizConfig; brand: Brand; plan?: PlanId; className?: string; screens?: boolean; fill?: boolean; defaultScreen?: PreviewScreen | "flow"; /** Version allégée : seule la rangée des écrans du parcours est affichée (ni appareil, ni zoom, ni « Recommencer »). */ bare?: boolean }) {
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
   const [key, setKey] = useState(0);
   const [screen, setScreen] = useState<PreviewScreen | "flow">(defaultScreen);
@@ -49,7 +49,7 @@ export function PreviewFrame({ config, brand, plan = "free", className, screens 
   /** En-tête de hauteur constante : appareil à gauche, zoom et « Recommencer » à droite (emplacements fixes), écrans en dessous sur une ligne défilante. */
   const header = (zoomControls?: React.ReactNode) => (
     <div className="@container mb-3 space-y-2">
-      <div className="flex items-center gap-2">
+      {!bare && <div className="flex items-center gap-2">
         <div className="inline-flex shrink-0 rounded-lg bg-muted p-1" role="group" aria-label="Appareil">
           <button onClick={() => setDevice("desktop")} aria-pressed={device === "desktop"} aria-label="Ordinateur" className={cn("flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm", device === "desktop" ? "bg-card font-medium shadow-sm" : "text-muted-foreground")}><Monitor className="size-4" /><span className="hidden @sm:inline">Ordinateur</span></button>
           <button onClick={() => setDevice("mobile")} aria-pressed={device === "mobile"} aria-label="Mobile" className={cn("flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm", device === "mobile" ? "bg-card font-medium shadow-sm" : "text-muted-foreground")}><Smartphone className="size-4" /><span className="hidden @sm:inline">Mobile</span></button>
@@ -59,7 +59,7 @@ export function PreviewFrame({ config, brand, plan = "free", className, screens 
           {zoomControls}
           <Button variant="outline" size="sm" onClick={() => setKey((k) => k + 1)} aria-label="Recommencer le parcours" disabled={screen !== "flow"} className={cn(screen !== "flow" && "pointer-events-none invisible")} tabIndex={screen === "flow" ? 0 : -1}><RotateCcw /><span className="hidden @md:inline">Recommencer</span></Button>
         </div>
-      </div>
+      </div>}
       {screens && (
         <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:thin]" role="group" aria-label="Écran à afficher">
           {SCREENS.map((s) => <button key={s.id} onClick={() => setScreen(s.id)} aria-pressed={screen === s.id} className={cn("shrink-0 whitespace-nowrap rounded-full border px-3 py-1 text-xs", screen === s.id ? "border-primary bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground")}>{s.label}</button>)}
@@ -68,7 +68,7 @@ export function PreviewFrame({ config, brand, plan = "free", className, screens 
     </div>
   );
 
-  if (fill) return <FitPreview className={className} device={device} header={bare ? () => null : header}>{runner}</FitPreview>;
+  if (fill) return <FitPreview className={className} device={device} header={header}>{runner}</FitPreview>;
 
   return (
     <div className={cn("flex min-h-0 flex-col", className)}>
