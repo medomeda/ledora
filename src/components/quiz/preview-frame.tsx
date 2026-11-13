@@ -47,24 +47,35 @@ export function PreviewFrame({ config, brand, plan = "free", className, screens 
   const runner = <QuizRunner key={key} config={config} brand={brand} mode="preview" plan={plan} previewScreen={screen === "flow" ? undefined : screen} />;
 
   /** En-tête de hauteur constante : appareil à gauche, zoom et « Recommencer » à droite (emplacements fixes), écrans en dessous sur une ligne défilante. */
-  const header = (zoomControls?: React.ReactNode) => (
+  const deviceToggle = (
+    <div className="inline-flex shrink-0 rounded-lg bg-muted p-1" role="group" aria-label="Appareil">
+      <button onClick={() => setDevice("desktop")} aria-pressed={device === "desktop"} aria-label="Ordinateur" className={cn("flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm", device === "desktop" ? "bg-card font-medium shadow-sm" : "text-muted-foreground")}><Monitor className="size-4" /><span className="hidden @2xl:inline">Ordinateur</span></button>
+      <button onClick={() => setDevice("mobile")} aria-pressed={device === "mobile"} aria-label="Mobile" className={cn("flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm", device === "mobile" ? "bg-card font-medium shadow-sm" : "text-muted-foreground")}><Smartphone className="size-4" /><span className="hidden @2xl:inline">Mobile</span></button>
+    </div>
+  );
+  const screenChips = (
+    <div className="flex min-w-0 gap-1.5 overflow-x-auto pb-1 [scrollbar-width:thin]" role="group" aria-label="Écran à afficher">
+      {SCREENS.map((s) => <button key={s.id} onClick={() => setScreen(s.id)} aria-pressed={screen === s.id} className={cn("shrink-0 whitespace-nowrap rounded-full border px-3 py-1 text-xs", screen === s.id ? "border-primary bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground")}>{s.label}</button>)}
+    </div>
+  );
+
+  /** Version allégée (`bare`) : une seule ligne, écrans à gauche et appareil à droite. Sinon : appareil, zoom et « Recommencer » puis écrans. Hauteur constante dans les deux cas. */
+  const header = (zoomControls?: React.ReactNode) => bare ? (
+    <div className="@container mb-3 flex items-center gap-3">
+      <div className="min-w-0 flex-1">{screens && screenChips}</div>
+      {deviceToggle}
+    </div>
+  ) : (
     <div className="@container mb-3 space-y-2">
-      {!bare && <div className="flex items-center gap-2">
-        <div className="inline-flex shrink-0 rounded-lg bg-muted p-1" role="group" aria-label="Appareil">
-          <button onClick={() => setDevice("desktop")} aria-pressed={device === "desktop"} aria-label="Ordinateur" className={cn("flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm", device === "desktop" ? "bg-card font-medium shadow-sm" : "text-muted-foreground")}><Monitor className="size-4" /><span className="hidden @sm:inline">Ordinateur</span></button>
-          <button onClick={() => setDevice("mobile")} aria-pressed={device === "mobile"} aria-label="Mobile" className={cn("flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm", device === "mobile" ? "bg-card font-medium shadow-sm" : "text-muted-foreground")}><Smartphone className="size-4" /><span className="hidden @sm:inline">Mobile</span></button>
-        </div>
+      <div className="flex items-center gap-2">
+        {deviceToggle}
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {!fill && <span className="hidden text-xs text-muted-foreground @xl:inline">Aperçu : aucune donnée enregistrée</span>}
           {zoomControls}
           <Button variant="outline" size="sm" onClick={() => setKey((k) => k + 1)} aria-label="Recommencer le parcours" disabled={screen !== "flow"} className={cn(screen !== "flow" && "pointer-events-none invisible")} tabIndex={screen === "flow" ? 0 : -1}><RotateCcw /><span className="hidden @md:inline">Recommencer</span></Button>
         </div>
-      </div>}
-      {screens && (
-        <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:thin]" role="group" aria-label="Écran à afficher">
-          {SCREENS.map((s) => <button key={s.id} onClick={() => setScreen(s.id)} aria-pressed={screen === s.id} className={cn("shrink-0 whitespace-nowrap rounded-full border px-3 py-1 text-xs", screen === s.id ? "border-primary bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground")}>{s.label}</button>)}
-        </div>
-      )}
+      </div>
+      {screens && screenChips}
     </div>
   );
 
