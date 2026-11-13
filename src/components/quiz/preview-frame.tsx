@@ -124,9 +124,8 @@ function FitPreview({ className, device, resetKey, header, children }: { classNa
   return (
     <div className={cn("flex min-h-0 flex-col", className)}>
       {header(zoomControls)}
-      {/* Pas de cadre ni de fond : l'écran simulé est posé seul, aligné en haut et centré horizontalement. */}
-      <div ref={stageRef} className="flex min-h-0 flex-1 overflow-auto">
-        <div className="mx-auto shrink-0 p-2" style={{ width: virtualW * scale + 16, height: virtualH * scale + 16 }}>
+      <div ref={stageRef} className="flex min-h-0 flex-1 overflow-auto rounded-xl border bg-muted">
+        <div className="m-auto shrink-0 p-2" style={{ width: virtualW * scale + 16, height: virtualH * scale + 16 }}>
           <div style={{ width: virtualW, height: virtualH, transform: `scale(${scale})`, transformOrigin: "top left" }} className={cn("overflow-hidden bg-background shadow-lg", device === "mobile" ? "rounded-[2.5rem] border-[10px] border-primary" : "rounded-xl border")}>
             <div ref={innerRef} className="flex flex-col" style={{ width: vp.w, minHeight: vp.h }}>{children}</div>
           </div>
