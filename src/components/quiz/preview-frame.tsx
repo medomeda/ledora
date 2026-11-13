@@ -40,7 +40,7 @@ function useSize<T extends HTMLElement>() {
  * `fill` remplit la hauteur du conteneur ET ajuste l'échelle pour que l'écran entier soit visible sans défilement
  * (le défilement n'apparaît que si l'écran est si long qu'il deviendrait illisible : échelle minimale 55 %).
  */
-export function PreviewFrame({ config, brand, plan = "free", className, screens = false, fill = false, defaultScreen = "flow" }: { config: QuizConfig; brand: Brand; plan?: PlanId; className?: string; screens?: boolean; fill?: boolean; defaultScreen?: PreviewScreen | "flow" }) {
+export function PreviewFrame({ config, brand, plan = "free", className, screens = false, fill = false, defaultScreen = "flow", bare = false }: { config: QuizConfig; brand: Brand; plan?: PlanId; className?: string; screens?: boolean; fill?: boolean; defaultScreen?: PreviewScreen | "flow"; /** Sans aucune commande : seul l'écran simulé est affiché (appareil, écran et zoom restent à leurs valeurs de départ). */ bare?: boolean }) {
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
   const [key, setKey] = useState(0);
   const [screen, setScreen] = useState<PreviewScreen | "flow">(defaultScreen);
@@ -68,7 +68,7 @@ export function PreviewFrame({ config, brand, plan = "free", className, screens 
     </div>
   );
 
-  if (fill) return <FitPreview className={className} device={device} header={header}>{runner}</FitPreview>;
+  if (fill) return <FitPreview className={className} device={device} header={bare ? () => null : header}>{runner}</FitPreview>;
 
   return (
     <div className={cn("flex min-h-0 flex-col", className)}>
