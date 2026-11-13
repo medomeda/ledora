@@ -29,7 +29,7 @@ Authentification : Better Auth (`BETTER_AUTH_SECRET`, 32 caractères minimum, ob
 
 `npm run db:migrate` applique les migrations, `npm run db:reset` recharge le jeu de démonstration (efface tout),
 `npm run db:empty` vide la base, `npm run db:generate` produit une migration après une modification de `schema.ts`.
-En production, le jeu de démonstration n'est jamais chargé (`LEADORA_SEED_DEMO=0` par défaut).
+En production, la démonstration n'est active que si `LEADORA_DEMO_MODE=1` (phase de test d'un déploiement, voir le guide Coolify).
 
 Comptes de démonstration (mot de passe `Leadora2026`, raccourcis sur la page de connexion) :
 

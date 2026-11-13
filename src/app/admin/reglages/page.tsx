@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { DemoResetCard } from "@/components/admin/demo-reset-card";
+import { canResetDemo } from "@/lib/demo";
 import { SettingsForm } from "@/components/admin/settings-form";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +31,7 @@ export default async function SettingsAdminPage() {
         <CardHeader><div><CardTitle>Plateforme</CardTitle><CardDescription>Inscriptions et communication avec les clients.</CardDescription></div></CardHeader>
         <CardBody><SettingsForm registrationsOpen={settings.registrationsOpen} announcement={settings.announcement} /></CardBody>
       </Card>
+      {canResetDemo() && <DemoResetCard />}
       <Card>
         <CardHeader><div><CardTitle>Modules</CardTitle><CardDescription>Activés par variable d&apos;environnement au déploiement (lecture seule ici).</CardDescription></div></CardHeader>
         <ul className="divide-y">

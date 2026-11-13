@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Brand } from "@/components/layout/brand";
+import { DemoBanner } from "@/components/layout/demo-banner";
+import { isDemoMode } from "@/lib/demo";
 import { HeroQuiz } from "@/components/marketing/hero-quiz";
 import { Button } from "@/components/ui/button";
 import { isStaff } from "@/lib/permissions/staff";
@@ -62,6 +64,7 @@ export default async function Home() {
     <div className="min-h-dvh bg-background">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
 
+      {isDemoMode() && <DemoBanner />}
       <header className="sticky top-0 z-30 border-b bg-background/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
           <Brand />

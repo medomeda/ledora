@@ -1,8 +1,12 @@
 import type { ReactNode } from "react";
 import { Brand } from "@/components/layout/brand";
+import { DemoBanner } from "@/components/layout/demo-banner";
+import { isDemoMode } from "@/lib/demo";
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
+    <>
+    {isDemoMode() && <DemoBanner />}
     <div className="grid min-h-dvh lg:grid-cols-[1fr_minmax(0,520px)]">
       <aside className="relative hidden flex-col justify-between overflow-hidden bg-primary p-12 text-primary-foreground lg:flex">
         <Brand light />
@@ -25,5 +29,6 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         </div>
       </main>
     </div>
+    </>
   );
 }

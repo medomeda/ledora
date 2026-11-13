@@ -14,3 +14,7 @@ services:
       LEADORA_BOOTSTRAP_ADMIN_EMAIL: admin@local.test
       LEADORA_BOOTSTRAP_ADMIN_PASSWORD: mot-de-passe-local-12
       LEADORA_BOOTSTRAP_ADMIN_NAME: Administrateur local
+      # Test local : parcours « production » (sans démonstration). Pour essayer le mode test : LEADORA_DEMO_MODE=1 LEADORA_ALLOW_DEMO_RESET=1 docker compose … up -d
+      LEADORA_DEMO_MODE: ${LEADORA_DEMO_MODE:-0}
+      LEADORA_ALLOW_DEMO_RESET: ${LEADORA_ALLOW_DEMO_RESET:-0}
+      CRON_SECRET: local-cron-secret-0123456789abcdef0123456789abcdef

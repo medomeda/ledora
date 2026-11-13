@@ -1,5 +1,6 @@
 import "server-only";
 import { resolve } from "node:path";
+import { isDemoMode } from "@/lib/demo";
 import type { AiGeneration, AuditLog, Business, Lead, LeadNote, LeadSubmission, LeadTag, PlatformSettings, Publication, Quiz, QuizSubmission, QuizVersion, QuizVisit, Tag, User } from "@/types/domain";
 
 /**
@@ -151,7 +152,8 @@ async function createDriver(): Promise<{ driver: Driver; db: unknown }> {
     db = pg;
   }
   // Jeu de démonstration : par défaut hors production, sur une base vide uniquement.
-  const seedDemo = (process.env.LEADORA_SEED_DEMO ?? (process.env.NODE_ENV === "production" ? "0" : "1")) === "1";
+  const seedFlag = process.env.LEADORA_SEED_DEMO;
+  const seedDemo = seedFlag ? seedFlag === "1" : isDemoMode();
   if (seedDemo && seeder && (await driver.isEmpty())) {
     const fresh = emptyState();
     seeder(fresh);

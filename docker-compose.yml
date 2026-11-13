@@ -1,4 +1,4 @@
-# Déploiement Coolify : application Leadora + base PostgreSQL.
+# Déploiement Coolify : application Leadora + base PostgreSQL (phase de test : démonstration active par défaut ; production : LEADORA_DEMO_MODE=0).
 # Guide : docs/DEPLOIEMENT_COOLIFY.md — test local de l'image : voir docker-compose.local.yml
 services:
   db:
@@ -33,9 +33,13 @@ services:
       LEADORA_BOOTSTRAP_ADMIN_EMAIL: ${LEADORA_BOOTSTRAP_ADMIN_EMAIL:-}
       LEADORA_BOOTSTRAP_ADMIN_PASSWORD: ${LEADORA_BOOTSTRAP_ADMIN_PASSWORD:-}
       LEADORA_BOOTSTRAP_ADMIN_NAME: ${LEADORA_BOOTSTRAP_ADMIN_NAME:-}
-      # Jeu de démonstration (comptes fictifs aux mots de passe publics) : JAMAIS en production. 1 = charge la démo dans une base vide.
-      LEADORA_SEED_DEMO: ${LEADORA_SEED_DEMO:-0}
-      LEADORA_DEMO_MODE: ${LEADORA_DEMO_MODE:-0}
+      # Phase de test : démonstration ACTIVE par défaut (bandeau, comptes fictifs sur la connexion, page /guide, données simulées
+      # chargées dans une base vide). Passer à 0 pour la production réelle, puis repartir d'une base vide.
+      LEADORA_DEMO_MODE: ${LEADORA_DEMO_MODE:-1}
+      # Démonstration seulement : bouton « Réinitialiser la démonstration » (Réglages) et route POST /api/demo/reset.
+      LEADORA_ALLOW_DEMO_RESET: ${LEADORA_ALLOW_DEMO_RESET:-0}
+      # Généré et conservé par Coolify : secret de la route de réinitialisation.
+      CRON_SECRET: ${SERVICE_HEX_64_CRONSECRET}
       # Modules.
       LEADORA_FEATURE_AI: ${LEADORA_FEATURE_AI:-1}
       LEADORA_FEATURE_ASSISTANT: ${LEADORA_FEATURE_ASSISTANT:-0}

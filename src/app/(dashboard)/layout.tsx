@@ -7,6 +7,7 @@ import { FeaturesProvider } from "@/components/layout/features-context";
 import { Button } from "@/components/ui/button";
 import { getBusinessOf, requireUser } from "@/lib/auth/session";
 import { isStaff } from "@/lib/permissions/staff";
+import { isDemoMode } from "@/lib/demo";
 import { getFeatures } from "@/lib/features";
 import "@/server/bootstrap";
 import { read } from "@/server/db/store";
@@ -33,7 +34,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const announcement = await read("settings", (s) => s.settings.announcement);
   return (
     <FeaturesProvider features={getFeatures()}>
-      <AppShell user={{ firstName: user.firstName, lastName: user.lastName, email: user.email, emailVerified: user.emailVerified, businessName: business?.name ?? "Mon espace", isAdmin: isStaff(user.role) }} announcement={announcement}>
+      <AppShell user={{ firstName: user.firstName, lastName: user.lastName, email: user.email, emailVerified: user.emailVerified, businessName: business?.name ?? "Mon espace", isAdmin: isStaff(user.role) }} announcement={announcement} demo={isDemoMode()}>
         {children}
       </AppShell>
     </FeaturesProvider>

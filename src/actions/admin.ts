@@ -1,5 +1,10 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { canResetDemo } from "@/lib/demo";
+import { getSession } from "@/lib/auth/session";
+import { can } from "@/lib/permissions/staff";
+import { resetState } from "@/server/db/store";
 import { authed, type ActionResult } from "@/actions/_shared";
 
 const adm: typeof authed = (schema, raw, run) => authed(schema, raw, run, "admin");
@@ -72,4 +77,13 @@ export async function setMemberAccessAction(raw: unknown): Promise<ActionResult>
 }
 export async function removeCollaboratorAction(raw: unknown): Promise<ActionResult> {
   return done(await adm(teamMemberSchema, raw, (i, ctx, _u, db) => db.txv((s) => team.removeCollaborator(s, ctx, i.userId))));
+}
+
+/** Remise à zéro de la démonstration depuis l'administration (mode test seulement) : tout est effacé et rechargé, les sessions sont fermées. */
+export async function resetDemoAction(): Promise<ActionResult> {
+  if (!canResetDemo()) return { ok: false, error: "La réinitialisation de la démonstration n'est pas activée." };
+  const user = await getSession();
+  if (!user || !can(user.role, "settings.manage")) return { ok: false, error: "Votre rôle ne permet pas cette action." };
+  await resetState(true);
+  redirect("/login");
 }

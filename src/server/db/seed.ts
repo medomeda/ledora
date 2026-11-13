@@ -20,7 +20,8 @@ import type { Business, LeadStatus, QuizConfig } from "@/types/domain";
  *  - demo@leadora.app : espace complet (quiz publiés, prospects, publications) ;
  *  - nouveau@leadora.app : espace vide, pour voir l'onboarding et les états vides.
  */
-export const DEMO_PASSWORD = "Leadora2026";
+export { DEMO_PASSWORD } from "@/lib/demo";
+import { DEMO_PASSWORD } from "@/lib/demo";
 
 function rng(seed: number) {
   let a = seed;

@@ -1,8 +1,12 @@
 # Déploiement sur Coolify — production
 
 Deux services : `app` (Leadora) et `db` (PostgreSQL 16). Les données vivent dans le volume `pg-data` et survivent aux
-redéploiements. Au premier démarrage, les migrations sont appliquées et la base reste **vide** : aucun compte ni donnée
-fictive. Le premier administrateur est créé à partir des variables `LEADORA_BOOTSTRAP_ADMIN_*` (section 4).
+redéploiements. Au premier démarrage, les migrations sont appliquées.
+
+**Phase de test (réglage par défaut)** : `LEADORA_DEMO_MODE=1` charge des **données simulées** dans la base vide (comptes
+fictifs, quiz, prospects), affiche le bandeau « Version de démonstration », les comptes de test sur la page de connexion et la
+page `/guide` pour les testeurs (section 9). **Production réelle** : `LEADORA_DEMO_MODE=0` et base vide : aucun compte
+ni donnée fictive, le premier administrateur est créé à partir des variables `LEADORA_BOOTSTRAP_ADMIN_*` (section 4).
 
 ## 1. Prérequis
 
@@ -31,8 +35,9 @@ Le HTTPS est **obligatoire** : les cookies de session sont marqués `Secure` en 
 
 ## 4. Variables d'environnement
 
-**Générées par Coolify, à ne pas toucher** : `SERVICE_PASSWORD_POSTGRES` (mot de passe de la base) et
-`SERVICE_HEX_64_BETTERAUTHSECRET` (secret de signature des sessions : le changer déconnecte tout le monde).
+**Générées par Coolify, à ne pas toucher** : `SERVICE_PASSWORD_POSTGRES` (mot de passe de la base),
+`SERVICE_HEX_64_BETTERAUTHSECRET` (secret de signature des sessions : le changer déconnecte tout le monde) et
+`SERVICE_HEX_64_CRONSECRET` (secret de la route de réinitialisation de la démonstration, section 9).
 
 **À renseigner** :
 
@@ -50,8 +55,8 @@ L'administrateur se connecte sur `https://votre-domaine/login` et arrive directe
 
 | Variable | Défaut | Rôle |
 |---|---|---|
-| `LEADORA_SEED_DEMO` | `0` | `1` charge le jeu de démonstration (comptes fictifs aux mots de passe publics) dans une base **vide**. **Jamais en production.** |
-| `LEADORA_DEMO_MODE` | `0` | `1` affiche les comptes de démonstration sur la page de connexion. |
+| `LEADORA_DEMO_MODE` | `1` | **Phase de test : actif par défaut** (bandeau, comptes fictifs sur la connexion, page `/guide`, données simulées chargées dans une base vide). Mettre `0` pour la production réelle, puis repartir d'une base vide (section 9). |
+| `LEADORA_ALLOW_DEMO_RESET` | `0` | Mode test seulement : `1` active le bouton « Réinitialiser la démonstration » (Administration → Réglages) et la route `POST /api/demo/reset`. |
 | `LEADORA_FEATURE_AI` | `1` | Assistance IA dans la création de quiz (fournisseur simulé : `AI_PROVIDER=mock`). |
 | `LEADORA_FEATURE_ASSISTANT` / `_PUBLICATIONS` | `0` | Modules « au chaud ». |
 | `MAIL_PROVIDER` | *(vide)* | Aucun fournisseur d'emails branché : les messages sont écrits dans les journaux et les liens (mot de passe oublié, invitations) s'affichent à l'écran. |
@@ -94,11 +99,30 @@ Avec Docker Desktop lancé :
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
-# http://localhost:3301 — administration : admin@local.test / mot-de-passe-local-12
+# http://localhost:3301 — parcours « production » : administration admin@local.test / mot-de-passe-local-12
+LEADORA_DEMO_MODE=1 LEADORA_ALLOW_DEMO_RESET=1 docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+# mode test : bandeau, /guide, comptes de démonstration (mot de passe Leadora2026)
 docker compose -f docker-compose.yml -f docker-compose.local.yml down -v   # arrêt et suppression des données de test
 ```
 
-## 9. Reste avant d'ouvrir au public
+## 9. Mode test (données simulées)
+
+Actif par défaut dans `docker-compose.yml` (`LEADORA_DEMO_MODE=1`). Au premier démarrage sur une base **vide**, le jeu de démonstration est
+chargé (comptes fictifs, 4 quiz, environ 300 prospects, une équipe d'administration). Les testeurs trouvent les comptes et des
+parcours conseillés sur `https://votre-domaine/guide` (mot de passe commun `Leadora2026` : comptes Coach, Nouveau client,
+Administrateur, Support, Lecture seule). Un bandeau « Version de démonstration » rappelle que rien de réel ne doit être saisi.
+
+- **Remise à zéro** (si `LEADORA_ALLOW_DEMO_RESET=1`) : Administration → Réglages → « Réinitialiser la démonstration », ou
+  ```bash
+  curl -X POST -H "Authorization: Bearer <SERVICE_HEX_64_CRONSECRET>" https://votre-domaine/api/demo/reset
+  ```
+  Tout est effacé et rechargé, et tout le monde est déconnecté.
+- **Passer en production réelle** : mettre `LEADORA_DEMO_MODE=0` **et repartir d'une base vide** (supprimer le volume `pg-data` de la ressource, puis
+  redéployer), sinon les comptes fictifs aux mots de passe publics resteraient dans la base. Renseigner ensuite `LEADORA_BOOTSTRAP_ADMIN_*` (section 4).
+- **Ne jamais** laisser le mode test actif sur l'instance qui reçoit des données réelles.
+- En mode test, le compte administrateur est `admin@leadora.app` : `LEADORA_BOOTSTRAP_ADMIN_*` n'est pas utilisé (un compte d'équipe existe déjà).
+
+## 10. Reste avant d'ouvrir au public
 
 Emails réels (fournisseur à choisir : confirmation d'adresse, mot de passe oublié, invitations), textes légaux (CGU, confidentialité)
 à faire valider, prix des offres, paiement en ligne, IA réelle (aujourd'hui simulée). Voir `docs/SUIVI.md`.

@@ -7,6 +7,7 @@ import { useState, type ReactNode } from "react";
 import { logoutAction } from "@/actions/auth";
 import { Brand } from "@/components/layout/brand";
 import { useOptimisticPath } from "@/components/layout/use-optimistic-path";
+import { DemoBanner } from "@/components/layout/demo-banner";
 import { NavPending } from "@/components/layout/nav-pending";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,7 +42,7 @@ function Links({ onNavigate, permissions }: { onNavigate?: () => void; permissio
 }
 
 /** Coque du back-office : barre latérale sombre pour qu'on ne confonde jamais l'administration avec l'espace d'un client. */
-export function AdminShell({ user, roleLabel, permissions, hasWorkspace, children }: { user: { firstName: string; lastName: string; email: string }; roleLabel: string; permissions: Permission[]; hasWorkspace: boolean; children: ReactNode }) {
+export function AdminShell({ user, roleLabel, permissions, hasWorkspace, demo, children }: { user: { firstName: string; lastName: string; email: string }; roleLabel: string; permissions: Permission[]; hasWorkspace: boolean; demo?: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const footer = (
@@ -62,6 +63,7 @@ export function AdminShell({ user, roleLabel, permissions, hasWorkspace, childre
         {footer}
       </aside>
       <div className="flex min-w-0 flex-col">
+        {demo && <DemoBanner />}
         <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-card/90 px-4 backdrop-blur sm:px-6 lg:hidden">
           <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
             <DialogPrimitive.Trigger asChild><Button variant="ghost" size="icon-sm" aria-label="Ouvrir le menu"><Menu className="size-5" /></Button></DialogPrimitive.Trigger>

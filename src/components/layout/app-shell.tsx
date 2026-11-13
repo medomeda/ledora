@@ -11,6 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { cn } from "@/lib/utils/cn";
 import { useFeatures } from "@/components/layout/features-context";
 import { useOptimisticPath } from "@/components/layout/use-optimistic-path";
+import { DemoBanner } from "@/components/layout/demo-banner";
 import { NavPending } from "@/components/layout/nav-pending";
 import { initials } from "@/lib/utils/text";
 import { toast } from "sonner";
@@ -53,7 +54,7 @@ export interface ShellUser {
   isAdmin?: boolean;
 }
 
-export function AppShell({ user, announcement, children }: { user: ShellUser; announcement?: string; children: ReactNode }) {
+export function AppShell({ user, announcement, demo, children }: { user: ShellUser; announcement?: string; demo?: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const [q, setQ] = useState("");
@@ -80,6 +81,7 @@ export function AppShell({ user, announcement, children }: { user: ShellUser; an
       </aside>
 
       <div className="flex min-w-0 flex-col">
+        {demo && <DemoBanner />}
         <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-card/90 px-4 backdrop-blur sm:px-6">
           <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
             <DialogPrimitive.Trigger asChild>
